@@ -1,11 +1,21 @@
 from typing import Annotated
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class LLMConfig(BaseModel):
-    api_key: str
+    provider: str = "openai"
+    model: str
+    emb_model: str
+    api_key: SecretStr
+    temperature: float
+    max_tokens: int
+    context_length: int
+
+
+class ChromaConfig(BaseModel):
+    persist_directory: str
 
 
 class Settings(BaseSettings):
@@ -14,6 +24,7 @@ class Settings(BaseSettings):
 
     # env vars
     llm: LLMConfig
+    chroma: ChromaConfig
     allow_origins: Annotated[list[str], NoDecode]
 
     # model configurations
