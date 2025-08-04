@@ -1,9 +1,3 @@
-"""
-This module contains the FastAPI application for the project.
-
-It defines the main application instance and includes routes for the root endpoint and health check.
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,6 +14,9 @@ def create_app() -> FastAPI:
         FastAPI: A configured FastAPI application instance.
     """
     app = FastAPI()
+    app.title = "Checki API"  # type: ignore
+    app.version = "0.1.0"
+    app.description = "API for Checki bot"
 
     app.add_middleware(
         CORSMiddleware,

@@ -2,7 +2,12 @@ import json
 from json import JSONDecodeError
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
@@ -20,6 +25,19 @@ async def websocket_endpoint(
     websocket: WebSocket,
     agent: Annotated[Agent, Depends(get_agent)],
 ):
+    """
+    Handles WebSocket connections for real-time chatbot interaction.
+
+    Args:
+        websocket (WebSocket): The WebSocket connection.
+        agent (Agent): The chatbot agent dependency.
+
+    Raises:
+        ValidationError: If the received data is not valid.
+        JSONDecodeError: If the received data is not valid JSON.
+        WebSocketDisconnect: If the WebSocket connection is disconnected.
+        Exception: For any unexpected errors.
+    """
     await websocket.accept()
     try:
         data = await websocket.receive_json()

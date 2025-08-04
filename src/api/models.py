@@ -12,9 +12,17 @@ class ApiMessage(BaseModel):
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str
+    content: str = Field(
+        ...,
+        description="The content of the message",
+        examples=["Tengo una pregunta"],
+    )
 
 
 class QueryRequest(BaseModel):
-    content: str
+    content: str = Field(
+        ...,
+        description="The content of the query",
+        examples=["Hola, como estas?"],
+    )
     history: list[ChatMessage]

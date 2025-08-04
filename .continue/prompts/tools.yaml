@@ -1,0 +1,7 @@
+name: Tools Prompt
+version: 0.0.1
+schema: v1
+prompts:
+  - name: Tools
+    description: Tools Callings
+    prompt: "Use tools to read and edit or create if not exists the code files."

@@ -15,10 +15,23 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          uv sync
+
       - name: Run Tests
         run: |
-          pytest -v
+          uv run pytest -v
+        env:
+          ALLOW_ORIGINS: "*"
+          LLM_PROVIDER: "openai"
+          LLM_MODEL: "gpt-3.5-turbo"
+          LLM_EMB_MODEL: "text-embedding-3-small"
+          LLM_API_KEY: "eyJhbGciOiJIUzI..."
+          LLM_TEMPERATURE: "0.7"
+          LLM_MAX_TOKENS: "1000"
+          LLM_CONTEXT_LENGTH: "32768"
+          CHROMA_PERSIST_DIRECTORY: "chroma_db"
