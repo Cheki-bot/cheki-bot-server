@@ -11,6 +11,8 @@ class MockAgent(Agent):
         pass
 
     async def stream(self, query: str, history):
+        if query == "Error":
+            raise Exception("Error processing query")
         chunks = ["Hello, ", "AI is ", "answering ", "here!"]
         for chunk in chunks:
             yield chunk
