@@ -22,7 +22,8 @@ class ChatMessage(BaseModel):
 class QueryRequest(BaseModel):
     content: str = Field(
         ...,
+        max_length=500,
         description="The content of the query",
         examples=["Hola, como estas?"],
     )
-    history: list[ChatMessage]
+    history: list[ChatMessage] = Field(..., max_length=50)
