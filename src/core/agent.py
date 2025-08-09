@@ -44,6 +44,7 @@ class Agent(ABC):
             str: Response chunks as they become available.
         """
         messages = await self.context_manager.retrieve_context(query, history)
+
         async for chunk in self.chat_model.astream(messages):
             output = str(chunk.content)
             output = output.replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")

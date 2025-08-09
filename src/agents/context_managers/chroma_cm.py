@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import tiktoken
 from langchain_chroma import Chroma
 from langchain_core.embeddings import Embeddings
@@ -46,12 +48,12 @@ class ChromaContextManager(ContextManager):
             The trimmed context messages including system message.
         """
         query_message = HumanMessage(content=query)
-        messages = history.messages + [query_message]
-        context = len(history.messages) and history.messages[-1].text() + query or query
-        system_message = await self.build_system_message(context)
-        return await self.trim_context([system_message] + messages)
+        messages = await self.trim_context([*history.messages, query_message])
+        system_messages = await self.build_system_messages(query)
 
-    async def build_system_message(self, query: str):
+        return [*system_messages, *messages]
+
+    async def build_system_messages(self, query: str) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
         Args:
@@ -61,10 +63,24 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
         retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10})
-        docs = await retriver.ainvoke(query)
-        context_text = "\n\n".join([doc.page_content for doc in docs])
-        chat_system_prompt = CHAT_SYSTEM_PROMPT.format(context=context_text)
-        return SystemMessage(content=chat_system_prompt)
+        documents = await retriver.ainvoke(query)
+        system_prompt = SystemMessage(content=CHAT_SYSTEM_PROMPT)
+        system_documents = [
+            SystemMessage(
+                content="Title: {} | Tags: {} | PublishDate: {}\n{}".format(
+                    document.metadata["title"],
+                    " ".join(document.metadata["tags"]),
+                    document.metadata["publication_date"],
+                    document.page_content,
+                )
+            )
+            for document in documents
+            if "title" in document.metadata
+            and "tags" in document.metadata
+            and "publication_date" in document.metadata
+        ]
+
+        return [system_prompt, *system_documents]
 
     async def trim_context(self, context):
         """Trim messages to fit within token limits using OpenAI token counting.
@@ -84,12 +100,40 @@ class ChromaContextManager(ContextManager):
                 if hasattr(msg, "content")
             )
 
-        return trim_messages(
-            context,
+        # Separar mensajes de sistema y usuario/asistente
+        system_messages = []
+        user_messages = []
+        for msg in context:
+            if isinstance(msg, SystemMessage):
+                system_messages.append(msg)
+            else:
+                user_messages.append(msg)
+
+        # Calcular límites para cada tipo de mensaje (mitad del contexto total)
+        max_tokens_system = ENV.llm.context_length // 3 * 2
+        max_tokens_user = ENV.llm.context_length // 3
+
+        # Recortar mensajes de sistema
+        trimmed_system = trim_messages(
+            system_messages,
             token_counter=count_tokens_openai,
-            max_tokens=ENV.llm.max_tokens,
+            max_tokens=max_tokens_system,
+            strategy="last",
+            start_on="system",
+            end_on=("system", "tool"),
+            include_system=True,
+        )
+
+        # Recortar mensajes de usuario/asistente
+        trimmed_user = trim_messages(
+            user_messages,
+            token_counter=count_tokens_openai,
+            max_tokens=max_tokens_user,
             strategy="last",
             start_on="human",
             end_on=("human", "tool"),
             include_system=True,
         )
+
+        # Combinar los mensajes recortados
+        return [*trimmed_system, *trimmed_user]

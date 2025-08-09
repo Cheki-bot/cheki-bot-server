@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Sequence
 
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage
@@ -14,7 +15,7 @@ class ContextManager(ABC):
         pass
 
     @abstractmethod
-    async def build_system_message(self, query: str) -> BaseMessage:
+    async def build_system_messages(self, query: str) -> Sequence[BaseMessage]:
         pass
 
     @abstractmethod
