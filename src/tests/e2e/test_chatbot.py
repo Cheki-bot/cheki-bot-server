@@ -103,3 +103,53 @@ def test_websocket_endpoint_invalid_role_in_history():
             assert "role" in response
         except WebSocketDisconnect as e:
             assert e.code == 1008
+
+
+def test_stream_content_too_long():
+    with client.websocket_connect("/api/chatbot/ws") as websocket:
+        try:
+            websocket.send_json(
+                {
+                    "content": "a" * 501,
+                    "history": [{"role": "user", "content": "Hi"}],
+                }
+            )
+            response = websocket.receive_text()
+            assert "ERROR" in response
+            assert "content" in response
+        except WebSocketDisconnect as e:
+            assert e.code == 1008
+
+
+def test_stream_history_too_long():
+    with client.websocket_connect("/api/chatbot/ws") as websocket:
+        websocket.send_json(
+            {
+                "content": "Hello, how are you?",
+                "history": [{"role": "user", "content": "Hi"}] * 51,
+            }
+        )
+        try:
+            response = websocket.receive_text()
+            assert "ERROR" in response
+            assert "history" in response
+        except WebSocketDisconnect as e:
+            assert e.code == 1008
+
+
+def test_websocket_content_and_history_too_long():
+    # Test when both content and history are too long
+    with client.websocket_connect("/api/chatbot/ws") as websocket:
+        websocket.send_json(
+            {
+                "content": "a" * 50,
+                "history": [{"role": "user", "content": "Hi"}] * 51,
+            }
+        )
+        try:
+            response = websocket.receive_text()
+            assert "ERROR" in response
+            assert "content" in response
+            assert "history" in response
+        except WebSocketDisconnect as e:
+            assert e.code == 1008
