@@ -10,32 +10,63 @@ A sophisticated conversational AI system built with Python, FastAPI, and LangCha
 - **Async/Await Support**: Non-blocking operations for better performance
 - **FastAPI Backend**: High-performance web framework with automatic API documentation
 - **Conversation Context Management**: Persistent conversation handling with context managers
+- **End-to-End Testing**: Comprehensive test suite with unit and integration tests
+- **Docker Support**: Containerized deployment with Docker Compose
 
 ## Project Structure
 
 ```sh
 .
 ├── .env.example              # Environment variables template
+├── .github/                  # GitHub workflows
+│   ├── workflows/
+│   │   ├── pytest.yml        # Test workflow
+│   │   └── ruff-linter.yml   # Linting workflow
 ├── Dockerfile                # Docker configuration
 ├── README.md                 # This file
+├── commands.py               # Utility commands
+├── docker-compose.yml        # Docker Compose configuration
 ├── main.py                   # Entry point for the application
 ├── pyproject.toml            # Dependencies and project configuration
 ├── scripts/                  # Utility scripts
-│   └── setup_db.py           # Database setup script
+│   └── create_vectordb.py    # Database setup script
 ├── src/
-│   ├── api/                  # API layer with routes and app setup
-│   │   ├── app.py            # FastAPI application factory
-│   │   ├── routes/           # API endpoints
-│   │   └── models.py         # Pydantic models for API requests/responses
+│   ├── __init__.py           # Package initialization
 │   ├── agents/               # Agent implementations for different LLMs
+│   │   ├── __init__.py       # Package initialization
 │   │   ├── nebius_agent.py   # Nebius LLM agent
 │   │   ├── openai_agent.py   # OpenAI LLM agent
 │   │   └── context_managers/ # Context management components
+│   │       ├── __init__.py   # Package initialization
+│   │       ├── chroma_cm.py  # ChromaDB-based context manager
+│   │       └── prompts.py    # Prompt templates
+│   ├── api/                  # API layer with routes and app setup
+│   │   ├── __init__.py       # Package initialization
+│   │   ├── app.py            # FastAPI application factory
+│   │   ├── deps.py           # Dependency injection
+│   │   ├── models.py         # Pydantic models for API requests/responses
+│   │   └── routes/           # API endpoints
+│   │       ├── __init__.py   # Package initialization
+│   │       └── chatbot.py    # Chat endpoint implementation
 │   ├── core/                 # Core system components
+│   │   ├── __init__.py       # Package initialization
 │   │   ├── agent.py          # Base Agent class
+│   │   ├── consts.py         # Constants
 │   │   └── entities/         # Core entity classes
-│   └── tests/                # Test suite
+│   │       ├── __init__.py   # Package initialization
+│   │       ├── context_manager.py  # Base context manager interface
+│   │       └── vector_store.py     # Base vector store interface
+│   ├── settings.py           # Configuration management
+│   ├── tests/                # Test suite
+│   │   ├── __init__.py       # Package initialization
+│   │   ├── test_agent.py     # Unit tests for agents
+│   │   └── e2e/              # End-to-end tests
+│   │       ├── __init__.py   # Package initialization
+│   │       └── test_chatbot.py # End-to-end chatbot tests
+│   └── tools/                # Utility tools
+│       ├── __init__.py       # Package initialization
 └── docs/                     # Documentation files
+    └── terminal_commands.md  # Terminal commands documentation
 ```
 
 ## Prerequisites
@@ -53,12 +84,17 @@ A sophisticated conversational AI system built with Python, FastAPI, and LangCha
     cd cheki-bot-server
     ```
 
-2. Syncronize environment and install dependencies:
+    *Clones the repository from the provided URL and enters the project directory.*
+
+2. Synchronize environment and install dependencies:
 
     ```bash
-    uv sync
+    uv sync # This creates the virtual environment and installs the project dependencies
     source venv/bin/activate  # On Windows: venv\Scripts\activate
     ```
+
+    *Synchronizes the environment and installs the necessary project dependencies.*
+    **Note**: Ensure `uv` is installed and available in your PATH. If not installed yet, install it via: [https://github.com/astral-sh/uv](https://docs-astral-sh.translate.goog/uv/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=es&_x_tr_pto=tc)
 
 3. Set up environment variables:
 
@@ -66,6 +102,8 @@ A sophisticated conversational AI system built with Python, FastAPI, and LangCha
     cp .env.example .env
     # Edit .env with your actual API keys and configurations
     ```
+
+    *Copies the example environment file and configures the actual API keys and settings.*
 
 ## Configuration
 
@@ -108,10 +146,29 @@ The system includes automatic API documentation:
 
 ### Chat Endpoint
 
+The chatbot provides two endpoints:
+
+1. `POST /chatbot/telegram_webhook` - For handling Telegram webhook updates
+2. `GET /chatbot/ws` - For real-time WebSocket chat interactions
+
+#### 1. POST `/chatbot/telegram_webhook`
+
+Send a POST request to handle Telegram webhook updates:
+
 ```bash
-curl -X POST "http://localhost:8000/chat" \
+# POST endpoint for chat messages
+curl -X POST "http://localhost:8000/api/chatbot/telegram_webhook" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello, how are you?"}'
+  -d '{"content": "Hello, how are you?", "history": []}'
+```
+
+#### 2. GET `/api/chatbot/ws`
+
+Open a WebSocket connection for real-time chat interactions:
+
+```bash
+# WebSocket endpoint for real-time chat
+curl -X GET "ws://localhost:8000/api/chatbot/ws"
 ```
 
 ### Health Check
@@ -142,10 +199,16 @@ curl http://localhost:8000/health
 Run unit tests:
 
 ```bash
-uv run uvicorn main:app --reaload
+uv run pytest src/tests/test_agent.py
 ```
 
 Run end-to-end tests:
+
+```bash
+uv run pytest src/tests/e2e/
+```
+
+Run all tests:
 
 ```bash
 uv run pytest
@@ -158,13 +221,7 @@ uv run pytest
 3. Write comprehensive docstrings
 4. Add unit tests for new functionality
 5. Run linters and formatters before committing
-
-## Contributing
-
-1. Create a feature branch
-2. Commit your changes
-3. Push to the branch
-4. Create a pull request
+6. Ensure all tests pass before merging
 
 ## Acknowledgements
 
