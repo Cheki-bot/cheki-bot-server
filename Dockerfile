@@ -35,6 +35,10 @@ WORKDIR /app
 # Configurar el PATH para usar uv
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Ejectar comandos necesarios
+RUN python commands.py --download
+RUN python commands.py --create
+
 # Exponer el puerto de la aplicación
 EXPOSE 8000
 
