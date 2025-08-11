@@ -14,6 +14,12 @@ class LLMConfig(BaseModel):
     context_length: int
 
 
+class GoogleConfig(BaseModel):
+    api_key: str
+    data_filename: str
+    folder_id: str
+
+
 class ChromaConfig(BaseModel):
     persist_directory: str
 
@@ -25,6 +31,7 @@ class Settings(BaseSettings):
     # env vars
     llm: LLMConfig
     chroma: ChromaConfig
+    google: GoogleConfig
     allow_origins: Annotated[list[str], NoDecode]
 
     # model configurations

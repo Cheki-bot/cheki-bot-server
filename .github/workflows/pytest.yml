@@ -35,3 +35,6 @@ jobs:
           LLM_MAX_TOKENS: "1000"
           LLM_CONTEXT_LENGTH: "32768"
           CHROMA_PERSIST_DIRECTORY: "chroma_db"
+          GOOGLE_API_KEY: AIzaSyDhwEji_UG...
+          GOOGLE_DATA_FILENAME: data.json
+          GOOGLE_FOLDER_ID: 1_Q9n4UFk90a3W...
