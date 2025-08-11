@@ -11,16 +11,18 @@ from src.settings import Settings
 
 settings = Settings(_env_file=".env")
 
+FOLDER = "base_file"
+
 
 def create_vectordb():
     print("Iniciando la creación de la base de datos vectorial...")
 
-    file_path = "base_file/processed_data_5.json"
+    file_path = f"{FOLDER}/{settings.google.data_filename}"
     print(f"Cargando documentos desde el archivo: {file_path}")
 
     loader = JSONLoader(
         file_path,
-        ".[] | {title, body, publication_date, tags, keywords}",
+        ".verifications[]",
         text_content=False,
     )
 
@@ -43,11 +45,11 @@ def create_vectordb():
         chunks = splitter.split_text(page_content["body"])
         for chunk in chunks:
             metadata = {
-                "title": page_content["title"],
-                "publication_date": page_content["publication_date"],
+                **page_content,
                 "tags": " ".join(page_content["tags"]),
-                "keywords": " ".join(page_content["keywords"]),
+                "type": "verifications",
             }
+            del metadata["body"]
             splitted_document = Document(page_content=chunk, metadata=metadata)
             splitted_documents.append(splitted_document)
 
