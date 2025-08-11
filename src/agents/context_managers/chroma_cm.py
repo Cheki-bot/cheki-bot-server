@@ -1,7 +1,9 @@
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Sequence
 
 import tiktoken
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.messages import (
     BaseMessage,
@@ -13,7 +15,11 @@ from langchain_core.messages import (
 from src import ENV
 
 from ...core.entities.context_manager import ContextManager
-from .prompts import CHAT_SYSTEM_PROMPT
+from .prompts import (
+    CHAT_SYSTEM_PROMPT,
+    VERIFICATION_TEMPLATE,
+    VERIFICATION_TEMPLATE_DEFAULT,
+)
 
 
 class ChromaContextManager(ContextManager):
@@ -64,25 +70,28 @@ class ChromaContextManager(ContextManager):
         """
         retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10})
         documents = await retriver.ainvoke(query)
-        system_prompt = SystemMessage(content=CHAT_SYSTEM_PROMPT)
+
+        current_date = datetime.now(UTC)
+        date_str = current_date.astimezone(
+            timezone(offset=timedelta(hours=-4), name="America/La_Paz")
+        ).strftime("%d de %B del %Y")
+
+        system_prompt = SystemMessage(content=CHAT_SYSTEM_PROMPT.format(date=date_str))
+
+        def format_document(document: Document):
+            data = VERIFICATION_TEMPLATE_DEFAULT.copy()
+            data.update({**document.metadata, "body": document.page_content})
+            return VERIFICATION_TEMPLATE.format(**data)
+
         system_documents = [
-            SystemMessage(
-                content="Title: {} | Tags: {} | PublishDate: {}\n{}".format(
-                    document.metadata["title"],
-                    " ".join(document.metadata["tags"]),
-                    document.metadata["publication_date"],
-                    document.page_content,
-                )
-            )
+            SystemMessage(content=format_document(document))
             for document in documents
-            if "title" in document.metadata
-            and "tags" in document.metadata
-            and "publication_date" in document.metadata
+            if document.metadata.get("type") == "verifications"
         ]
 
         return [system_prompt, *system_documents]
 
-    async def trim_context(self, context):
+    async def trim_context(self, context) -> list[BaseMessage]:
         """Trim messages to fit within token limits using OpenAI token counting.
 
         Args:
@@ -109,8 +118,7 @@ class ChromaContextManager(ContextManager):
             else:
                 user_messages.append(msg)
 
-        # Calcular límites para cada tipo de mensaje (mitad del contexto total)
-        max_tokens_system = ENV.llm.context_length // 3 * 2
+        max_tokens_system = ENV.llm.context_length * 2 // 3
         max_tokens_user = ENV.llm.context_length // 3
 
         # Recortar mensajes de sistema
@@ -118,10 +126,8 @@ class ChromaContextManager(ContextManager):
             system_messages,
             token_counter=count_tokens_openai,
             max_tokens=max_tokens_system,
-            strategy="last",
-            start_on="system",
+            strategy="first",
             end_on=("system", "tool"),
-            include_system=True,
         )
 
         # Recortar mensajes de usuario/asistente
