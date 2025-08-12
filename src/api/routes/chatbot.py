@@ -8,7 +8,6 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 
@@ -51,9 +50,7 @@ async def websocket_endpoint(
             for msg in query.history
         ]
 
-        history = InMemoryChatMessageHistory()
-        await history.aadd_messages(messages)
-        async for token in agent.stream(query.content, history):
+        async for token in agent.stream(query.content, messages):
             await websocket.send_text(token)
         await websocket.close()
 

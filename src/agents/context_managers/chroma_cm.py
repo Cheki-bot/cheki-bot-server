@@ -59,7 +59,7 @@ class ChromaContextManager(ContextManager):
             The trimmed context messages including system message.
         """
         query_message = HumanMessage(content=query)
-        messages = await self.trim_context([*history.messages, query_message])
+        messages = await self.trim_context([*history, query_message])
         user_message = filter(lambda msg: isinstance(msg, HumanMessage), messages)
 
         system_messages = await self.build_system_messages(list(user_message)[-3:])
@@ -137,8 +137,6 @@ class ChromaContextManager(ContextManager):
                 content=total_content,
             )
         )
-
-        print(system_prompt.content)
 
         return [system_prompt]
 
