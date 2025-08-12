@@ -3,14 +3,21 @@ import requests
 import telegram
 from dotenv import load_dotenv
 
+load_dotenv()
+
 def handler(request):
 
-    TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
-    CHEKIBOT_API = os.environ['CHEKIBOT_API']
+    CHEKIBOT_API = os.getenv['CHEKIBOT_API']
+    TELEGRAM_TOKEN = os.getenv['TELEGRAM_TOKEN']
 
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    if not TELEGRAM_TOKEN or not CHEKIBOT_API:
+        return{"statusCode": 500, "body": "Configuration error"}
+    
+    try:        
 
-    try:
+        bot = telegram.Bot(token=TELEGRAM_TOKEN)
+
+    
         update = request.get_json()
 
         if "message" in update and "text" in update["message"]:
@@ -18,7 +25,7 @@ def handler(request):
             delivered_message = update["message"]["text"]
 
             payload = {'message': delivered_message}
-            api_answer = requests.post(CHEKIBOT_API, json=payload, timeout=20)
+            api_answer = requests.post(CHEKIBOT_API, json=payload, timeout=10)
             api_answer.raise_for_status()
 
             data_response = api_answer.json()
