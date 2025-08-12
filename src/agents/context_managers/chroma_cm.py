@@ -13,10 +13,15 @@ from langchain_core.messages import (
 )
 
 from src import ENV
+from src.consts import DocType
 
 from ...core.entities.context_manager import ContextManager
 from .prompts import (
+    CALENDAR_EVENT_TEMPLATE,
+    CALENDAR_METADATA_TEMPLATE,
     CHAT_SYSTEM_PROMPT,
+    GOV_PROGRAM_TEMPLATE,
+    GOV_PROGRAM_TEMPLATE_DEFAULT,
     VERIFICATION_TEMPLATE,
     VERIFICATION_TEMPLATE_DEFAULT,
 )
@@ -55,11 +60,25 @@ class ChromaContextManager(ContextManager):
         """
         query_message = HumanMessage(content=query)
         messages = await self.trim_context([*history.messages, query_message])
-        system_messages = await self.build_system_messages(query)
+        user_message = filter(lambda msg: isinstance(msg, HumanMessage), messages)
+
+        system_messages = await self.build_system_messages(list(user_message)[-3:])
 
         return [*system_messages, *messages]
 
-    async def build_system_messages(self, query: str) -> Sequence[SystemMessage]:
+    def __format_verification(self, document: Document):
+        data = VERIFICATION_TEMPLATE_DEFAULT.copy()
+        data.update({**document.metadata, "body": document.page_content})
+        return VERIFICATION_TEMPLATE.format(**data)
+
+    def __format_gov_program(self, document: Document):
+        data = GOV_PROGRAM_TEMPLATE_DEFAULT.copy()
+        data.update({**document.metadata, "content": document.page_content})
+        return GOV_PROGRAM_TEMPLATE.format(**data)
+
+    async def build_system_messages(
+        self, queries: Sequence[BaseMessage], k: int = 20
+    ) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
         Args:
@@ -68,28 +87,59 @@ class ChromaContextManager(ContextManager):
         Returns:
             A SystemMessage containing the formatted context from the database.
         """
-        retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10})
-        documents = await retriver.ainvoke(query)
+
+        if len(queries) > 1:
+            k = k // (len(queries) + 1)
+
+        retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
+        documents: list[Document] = []
+        contents = []
+        for query in queries:
+            docs = await retriver.ainvoke(str(query.content))
+            contents.append(query.content)
+            documents.extend(docs)
+        extra_docs = await retriver.ainvoke(" ".join(contents))
+        documents.extend(extra_docs)
 
         current_date = datetime.now(UTC)
         date_str = current_date.astimezone(
             timezone(offset=timedelta(hours=-4), name="America/La_Paz")
         ).strftime("%d de %B del %Y")
 
-        system_prompt = SystemMessage(content=CHAT_SYSTEM_PROMPT.format(date=date_str))
+        contents = []
 
-        def format_document(document: Document):
-            data = VERIFICATION_TEMPLATE_DEFAULT.copy()
-            data.update({**document.metadata, "body": document.page_content})
-            return VERIFICATION_TEMPLATE.format(**data)
+        for document in documents:
+            match document.metadata.get("type"):
+                case DocType.VERIFICATIONS.value:
+                    content = self.__format_verification(document)
 
-        system_documents = [
-            SystemMessage(content=format_document(document))
-            for document in documents
-            if document.metadata.get("type") == "verifications"
-        ]
+                    contents.append(content)
+                case DocType.GOV_PROGRAMS.value:
+                    content = self.__format_gov_program(document)
+                    contents.append(content)
 
-        return [system_prompt, *system_documents]
+                case DocType.CALENDAR_META.value:
+                    content = CALENDAR_METADATA_TEMPLATE.format(
+                        content=document.page_content
+                    )
+                    contents.append(content)
+
+                case DocType.CALENDAR.value:
+                    content = CALENDAR_EVENT_TEMPLATE.format(
+                        content=document.page_content
+                    )
+                    contents.append(content)
+
+        total_content = "".join(contents)
+
+        system_prompt = SystemMessage(
+            content=CHAT_SYSTEM_PROMPT.format(
+                date=date_str,
+                content=total_content,
+            )
+        )
+
+        return [system_prompt]
 
     async def trim_context(self, context) -> list[BaseMessage]:
         """Trim messages to fit within token limits using OpenAI token counting.
@@ -109,32 +159,13 @@ class ChromaContextManager(ContextManager):
                 if hasattr(msg, "content")
             )
 
-        # Separar mensajes de sistema y usuario/asistente
-        system_messages = []
-        user_messages = []
-        for msg in context:
-            if isinstance(msg, SystemMessage):
-                system_messages.append(msg)
-            else:
-                user_messages.append(msg)
-
-        max_tokens_system = ENV.llm.context_length * 2 // 3
-        max_tokens_user = ENV.llm.context_length // 3
-
         # Recortar mensajes de sistema
-        trimmed_system = trim_messages(
-            system_messages,
-            token_counter=count_tokens_openai,
-            max_tokens=max_tokens_system,
-            strategy="first",
-            end_on=("system", "tool"),
-        )
 
         # Recortar mensajes de usuario/asistente
         trimmed_user = trim_messages(
-            user_messages,
+            context,
             token_counter=count_tokens_openai,
-            max_tokens=max_tokens_user,
+            max_tokens=ENV.llm.context_length,
             strategy="last",
             start_on="human",
             end_on=("human", "tool"),
@@ -142,4 +173,4 @@ class ChromaContextManager(ContextManager):
         )
 
         # Combinar los mensajes recortados
-        return [*trimmed_system, *trimmed_user]
+        return trimmed_user

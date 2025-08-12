@@ -15,7 +15,9 @@ class ContextManager(ABC):
         pass
 
     @abstractmethod
-    async def build_system_messages(self, query: str) -> Sequence[BaseMessage]:
+    async def build_system_messages(
+        self, queries: list[BaseMessage]
+    ) -> Sequence[BaseMessage]:
         pass
 
     @abstractmethod
