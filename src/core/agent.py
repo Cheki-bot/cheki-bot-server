@@ -1,9 +1,11 @@
 from abc import ABC
+from typing import Sequence
 
-from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage
 
-from .conts import THINK_TAGS
+from src.core.conts import THINK_TAGS
+
 from .entities.context_manager import ContextManager
 
 
@@ -29,7 +31,7 @@ class Agent(ABC):
         self.chat_model = chat_model
         self.context_manager = context_manager
 
-    async def stream(self, query: str, history: BaseChatMessageHistory):
+    async def stream(self, query: str, history: Sequence[BaseMessage]):
         """Stream response chunks for a given query and chat history.
 
         This method retrieves relevant context using the context manager,
@@ -44,8 +46,31 @@ class Agent(ABC):
             str: Response chunks as they become available.
         """
         messages = await self.context_manager.retrieve_context(query, history)
-
         async for chunk in self.chat_model.astream(messages):
             output = str(chunk.content)
             output = output.replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
             yield output
+
+    async def invoke(self, query: str, history: Sequence[BaseMessage]) -> str:
+        """Process a query and generate a response using context-aware reasoning.
+
+        Retrieves relevant context based on the query and conversation history,
+        then uses the chat model to generate a response. Removes thinking tags
+        from the final output to provide clean responses.
+
+        Args:
+            query (str): The user's query or question to process
+            history (list[BaseMessage]): Conversation history with previous messages
+
+        Returns:
+            str: The generated response text with thinking tags removed
+
+        Example:
+            >>> agent = Agent()
+            >>> response = await agent.invoke("What is AI?", [])
+            >>> print(response)
+            "AI stands for Artificial Intelligence..."
+        """
+        messages = await self.context_manager.retrieve_context(query, history)
+        output = await self.chat_model.ainvoke(messages)
+        return str(output.content).replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
