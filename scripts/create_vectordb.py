@@ -18,7 +18,7 @@ embedding = OpenAIEmbeddings(
     model=settings.llm.emb_model,
     api_key=settings.llm.api_key,
 )
-splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=5)
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
 
 def load_verifications():
