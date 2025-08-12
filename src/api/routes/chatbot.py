@@ -1,21 +1,20 @@
 import json
 from json import JSONDecodeError
-from typing import Annotated
+from typing import Annotated, Any, Dict
 
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
     WebSocket,
     WebSocketDisconnect,
 )
-from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 
 from src.api.deps import get_agent
+from src.api.models import QueryRequest
 from src.core.agent import Agent
-
-from ..models import QueryRequest
 
 chatbot_router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
@@ -51,9 +50,7 @@ async def websocket_endpoint(
             for msg in query.history
         ]
 
-        history = InMemoryChatMessageHistory()
-        await history.aadd_messages(messages)
-        async for token in agent.stream(query.content, history):
+        async for token in agent.stream(query.content, messages):
             await websocket.send_text(token)
         await websocket.close()
 
@@ -71,3 +68,56 @@ async def websocket_endpoint(
     except Exception as e:
         await websocket.send_text(f"ERROR inesperado: {str(e)}")
         await websocket.close(code=1011)
+
+
+@chatbot_router.post("/webhook")
+async def telegram_webhook(
+    update: Dict[str, Any],
+    agent: Annotated[Agent, Depends(get_agent)],
+):
+    """
+    Handles Telegram webhook requests for chatbot interactions.
+
+    This endpoint processes messages sent from Telegram and responds with
+    the chatbot's response.
+
+    Args:
+        update (Dict[str, Any]): The Telegram update data containing message information.
+        agent (Agent): The chatbot agent dependency.
+
+    Returns:
+        dict: Response indicating successful processing with the bot's reply.
+
+    Example request body:
+        {
+            "message": {
+                "message_id": 123,
+                "chat": {
+                    "id": 123456789
+                },
+                "text": "Hola, ¿cómo estás?"
+            }
+        }
+    """
+    try:
+        # Validate that we have a message in the update
+        if not update or "message" not in update:
+            raise HTTPException(status_code=400, detail="Invalid Telegram update")
+
+        message = update["message"]
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+
+        # Ignore empty messages
+        if not text:
+            return {"status": "success"}
+
+        # Process the message using the agent
+        response = await agent.invoke(text, [])
+
+        return {"status": "success", "chat_id": chat_id, "response": response}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing message: {str(e)}"
+        )

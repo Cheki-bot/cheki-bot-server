@@ -59,7 +59,7 @@ class ChromaContextManager(ContextManager):
             The trimmed context messages including system message.
         """
         query_message = HumanMessage(content=query)
-        messages = await self.trim_context([*history.messages, query_message])
+        messages = await self.trim_context([*history, query_message])
         user_message = filter(lambda msg: isinstance(msg, HumanMessage), messages)
 
         system_messages = await self.build_system_messages(list(user_message)[-3:])
@@ -77,7 +77,7 @@ class ChromaContextManager(ContextManager):
         return GOV_PROGRAM_TEMPLATE.format(**data)
 
     async def build_system_messages(
-        self, queries: Sequence[BaseMessage], k: int = 20
+        self, queries: Sequence[BaseMessage], k: int = 40
     ) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
@@ -88,16 +88,15 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
-        if len(queries) > 1:
-            k = k // (len(queries) + 1)
-
-        retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
         documents: list[Document] = []
         contents = []
-        for query in queries:
+        for query in queries[::-1]:
+            k = k // 2
+            retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
             docs = await retriver.ainvoke(str(query.content))
             contents.append(query.content)
             documents.extend(docs)
+        retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
         extra_docs = await retriver.ainvoke(" ".join(contents))
         documents.extend(extra_docs)
 
