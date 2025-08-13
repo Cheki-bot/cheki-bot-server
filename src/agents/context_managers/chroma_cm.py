@@ -89,11 +89,11 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
-        k = 20
+        k = 21
         documents: list[Document] = []
         contents = []
         for query in queries[::-1]:
-            k = k // 3
+            k = k // 3 if k >= 3 else k
             retriver = self.vectorDB.as_retriever(search_kwargs={"k": k * 2})
             docs = await retriver.ainvoke(str(query.content))
             contents.append(query.content)

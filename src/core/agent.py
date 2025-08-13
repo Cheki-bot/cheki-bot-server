@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Sequence
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, SystemMessage
 
 from src.core.conts import THINK_TAGS
 
@@ -72,5 +72,14 @@ class Agent(ABC):
             "AI stands for Artificial Intelligence..."
         """
         messages = await self.context_manager.retrieve_context(query, history)
-        output = await self.chat_model.ainvoke(messages)
+
+        prev_system_msg = SystemMessage(
+            content="Vamos a manejar mensajes para telegram y whatsapp "
+            + "En las reglas generales ignora la regla 6 "
+            + "Respeta al pie de la letra todas las reglas excepto la 6"
+            + "no incluyas las etiquetas en la respuesta"
+            + "si muestras enlaces deben ser sin markdown"
+        )
+
+        output = await self.chat_model.ainvoke([prev_system_msg, *messages])
         return str(output.content).replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
