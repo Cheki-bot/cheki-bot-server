@@ -1,4 +1,8 @@
+import os
+import re
 import json
+import traceback
+from telegram import Bot
 from json import JSONDecodeError
 from typing import Annotated, Any, Dict
 
@@ -15,6 +19,14 @@ from pydantic import ValidationError
 from src.api.deps import get_agent
 from src.api.models import QueryRequest
 from src.core.agent import Agent
+
+def limpiar_markdown(texto: str) -> str:
+    texto = re.sub(r'(\*\*|__|\*|_)', '', texto)
+    texto = re.sub(r'#+\s', '', texto)
+    texto = re.sub(r'^\s*[\*\-]\s*|\d+\.\s*', '', texto, flags=re.MULTILINE)
+    texto = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', texto)
+    return texto.strip()
+
 
 chatbot_router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
@@ -75,49 +87,33 @@ async def telegram_webhook(
     update: Dict[str, Any],
     agent: Annotated[Agent, Depends(get_agent)],
 ):
-    """
-    Handles Telegram webhook requests for chatbot interactions.
-
-    This endpoint processes messages sent from Telegram and responds with
-    the chatbot's response.
-
-    Args:
-        update (Dict[str, Any]): The Telegram update data containing message information.
-        agent (Agent): The chatbot agent dependency.
-
-    Returns:
-        dict: Response indicating successful processing with the bot's reply.
-
-    Example request body:
-        {
-            "message": {
-                "message_id": 123,
-                "chat": {
-                    "id": 123456789
-                },
-                "text": "Hola, ¿cómo estás?"
-            }
-        }
-    """
     try:
-        # Validate that we have a message in the update
-        if not update or "message" not in update:
-            raise HTTPException(status_code=400, detail="Invalid Telegram update")
+        if not update or "message" not in update or "chat" not in update["message"]:
+            return {"status": "ok", "detail": "Update no válido o sin mensaje."}
 
         message = update["message"]
         chat_id = message["chat"]["id"]
         text = message.get("text", "")
 
-        # Ignore empty messages
         if not text:
-            return {"status": "success"}
+            return {"status": "ok", "detail": "Mensaje de texto vacío."}
 
-        # Process the message using the agent
-        response = await agent.invoke(text, [])
+        response_de_la_ia = await agent.invoke(text, [])
 
-        return {"status": "success", "chat_id": chat_id, "response": response}
+        texto_para_telegram = limpiar_markdown(response_de_la_ia)
+
+        TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+        if TELEGRAM_TOKEN:
+            bot = Bot(token=TELEGRAM_TOKEN)
+            await bot.send_message(chat_id=chat_id, text=texto_para_telegram)
+        else:
+            print("ERROR: TELEGRAM_TOKEN no está configurado.")
+
+        return {"status": "success"}
 
     except Exception as e:
+        print("error")
+        traceback.print_exc()
         raise HTTPException(
             status_code=500, detail=f"Error processing message: {str(e)}"
         )

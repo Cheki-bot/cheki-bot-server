@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     chroma: ChromaConfig
     google: GoogleConfig
     allow_origins: Annotated[list[str], NoDecode]
+    telegram_token: SecretStr
+    chekibot_api: str
 
     # model configurations
     model_config = SettingsConfigDict(

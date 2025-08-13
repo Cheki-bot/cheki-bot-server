@@ -11,7 +11,7 @@ notebooks/*
 # Virtual environments
 .venv
 .env
-
+venv
 # Databases and caches
 base_file/
 chroma_db/
