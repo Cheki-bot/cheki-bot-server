@@ -89,7 +89,7 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
-        k = 20
+        k = 21
         documents: list[Document] = []
         contents = []
         for query in queries[::-1]:
