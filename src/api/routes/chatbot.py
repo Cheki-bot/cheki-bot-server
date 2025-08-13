@@ -1,4 +1,7 @@
+import os
 import json
+import traceback
+from telegram import Bot
 from json import JSONDecodeError
 from typing import Annotated, Any, Dict
 
@@ -75,32 +78,7 @@ async def telegram_webhook(
     update: Dict[str, Any],
     agent: Annotated[Agent, Depends(get_agent)],
 ):
-    """
-    Handles Telegram webhook requests for chatbot interactions.
-
-    This endpoint processes messages sent from Telegram and responds with
-    the chatbot's response.
-
-    Args:
-        update (Dict[str, Any]): The Telegram update data containing message information.
-        agent (Agent): The chatbot agent dependency.
-
-    Returns:
-        dict: Response indicating successful processing with the bot's reply.
-
-    Example request body:
-        {
-            "message": {
-                "message_id": 123,
-                "chat": {
-                    "id": 123456789
-                },
-                "text": "Hola, ¿cómo estás?"
-            }
-        }
-    """
     try:
-        # Validate that we have a message in the update
         if not update or "message" not in update:
             raise HTTPException(status_code=400, detail="Invalid Telegram update")
 
@@ -108,16 +86,26 @@ async def telegram_webhook(
         chat_id = message["chat"]["id"]
         text = message.get("text", "")
 
-        # Ignore empty messages
         if not text:
             return {"status": "success"}
 
-        # Process the message using the agent
-        response = await agent.invoke(text, [])
+        response_text = await agent.invoke(text, [])
 
-        return {"status": "success", "chat_id": chat_id, "response": response}
+        if not isinstance(response_text, str):
+            response_text = "error al procesar la respuesta."
+
+        TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+        if TELEGRAM_TOKEN:
+            bot = Bot(token=TELEGRAM_TOKEN)
+            await bot.send_message(chat_id=chat_id, text=response_text)
+        else:
+            print("ERROR: TELEGRAM_TOKEN no está configurado.")
+
+        return {"status": "success"}
 
     except Exception as e:
+        print("error")
+        traceback.print_exc()
         raise HTTPException(
             status_code=500, detail=f"Error processing message: {str(e)}"
         )

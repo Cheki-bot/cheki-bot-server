@@ -7,8 +7,8 @@ load_dotenv()
 
 def handler(request):
 
-    CHEKIBOT_API = os.getenv['CHEKIBOT_API']
-    TELEGRAM_TOKEN = os.getenv['TELEGRAM_TOKEN']
+    CHEKIBOT_API = os.getenv('CHEKIBOT_API')
+    TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 
     if not TELEGRAM_TOKEN or not CHEKIBOT_API:
         return{"statusCode": 500, "body": "Configuration error"}
