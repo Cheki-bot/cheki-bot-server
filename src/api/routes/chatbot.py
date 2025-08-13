@@ -36,22 +36,50 @@ async def websocket_endpoint(
     websocket: WebSocket,
     agent: Annotated[Agent, Depends(get_agent)],
 ):
+    """
+    Handles WebSocket connections for real-time chatbot interaction.
+
+    Args:
+        websocket (WebSocket): The WebSocket connection.
+        agent (Agent): The chatbot agent dependency.
+
+    Raises:
+        ValidationError: If the received data is not valid.
+        JSONDecodeError: If the received data is not valid JSON.
+        WebSocketDisconnect: If the WebSocket connection is disconnected.
+        Exception: For any unexpected errors.
+    """
     await websocket.accept()
     try:
         data = await websocket.receive_json()
+
         query = QueryRequest.model_validate(data)
+
         messages = [
             HumanMessage(content=msg.content)
             if msg.role == "user"
             else AIMessage(content=msg.content)
             for msg in query.history
         ]
+
         async for token in agent.stream(query.content, messages):
             await websocket.send_text(token)
         await websocket.close()
-    except (ValidationError, JSONDecodeError, WebSocketDisconnect, Exception) as e:
-        print(f"Error en WebSocket: {e}")
+
+    except ValidationError as e:
+        await websocket.send_text(f"ERROR de validación: {json.dumps(e.json())}")
+        await websocket.close(code=1008)
+
+    except JSONDecodeError as e:
+        await websocket.send_text(f"ERROR de decodificación JSON: {e}")
+        await websocket.close(code=1003)
+
+    except WebSocketDisconnect:
         await websocket.close()
+
+    except Exception as e:
+        await websocket.send_text(f"ERROR inesperado: {str(e)}")
+        await websocket.close(code=1011)
 
 
 @chatbot_router.post("/webhook")
