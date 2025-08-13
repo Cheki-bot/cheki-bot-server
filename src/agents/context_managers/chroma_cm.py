@@ -60,6 +60,7 @@ class ChromaContextManager(ContextManager):
         """
         query_message = HumanMessage(content=query)
         messages = await self.trim_context([*history, query_message])
+
         user_message = filter(lambda msg: isinstance(msg, HumanMessage), messages)
 
         system_messages = await self.build_system_messages(list(user_message)[-3:])
@@ -77,7 +78,7 @@ class ChromaContextManager(ContextManager):
         return GOV_PROGRAM_TEMPLATE.format(**data)
 
     async def build_system_messages(
-        self, queries: Sequence[BaseMessage], k: int = 40
+        self, queries: Sequence[BaseMessage]
     ) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
@@ -88,15 +89,18 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
+        k = 20
         documents: list[Document] = []
         contents = []
         for query in queries[::-1]:
-            k = k // 2
-            retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
+            k = k // 3
+            retriver = self.vectorDB.as_retriever(search_kwargs={"k": k * 2})
             docs = await retriver.ainvoke(str(query.content))
             contents.append(query.content)
             documents.extend(docs)
-        retriver = self.vectorDB.as_retriever(search_kwargs={"k": k})
+        retriver = self.vectorDB.as_retriever(
+            search_kwargs={"k": k},
+        )
         extra_docs = await retriver.ainvoke(" ".join(contents))
         documents.extend(extra_docs)
 
@@ -149,7 +153,7 @@ class ChromaContextManager(ContextManager):
         Returns:
             The trimmed list of messages that fit within the token limit.
         """
-        encoding = tiktoken.encoding_for_model("gpt-4-nano")
+        encoding = tiktoken.encoding_for_model("gpt-4.1-nano")
 
         def count_tokens_openai(message_list: list[BaseMessage]):
             return sum(
@@ -158,9 +162,6 @@ class ChromaContextManager(ContextManager):
                 if hasattr(msg, "content")
             )
 
-        # Recortar mensajes de sistema
-
-        # Recortar mensajes de usuario/asistente
         trimmed_user = trim_messages(
             context,
             token_counter=count_tokens_openai,
@@ -171,5 +172,4 @@ class ChromaContextManager(ContextManager):
             include_system=True,
         )
 
-        # Combinar los mensajes recortados
         return trimmed_user

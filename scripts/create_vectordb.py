@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -18,7 +19,16 @@ embedding = OpenAIEmbeddings(
     model=settings.llm.emb_model,
     api_key=settings.llm.api_key,
 )
-splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1250,
+    chunk_overlap=150,
+    separators=["\n\n", "\n", ". ", " ", ""],
+)
+
+
+def clean_text(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip()  # espacios redundantes
+    return text
 
 
 def load_verifications():
@@ -40,7 +50,9 @@ def load_verifications():
                 "type": DocType.VERIFICATIONS.value,
             }
             del metadata["body"]
-            splitted_document = Document(page_content=chunk, metadata=metadata)
+            splitted_document = Document(
+                page_content=clean_text(chunk), metadata=metadata
+            )
             splitted_documents.append(splitted_document)
     print(f"Verificaciones cargadas: {len(splitted_documents)} documentos")
     return splitted_documents
@@ -64,12 +76,17 @@ def load_government_programs():
                 "type": DocType.GOV_PROGRAMS.value,
             }
             del metadata["content"]
-            content = "Plan o programa de gobierno \n{} - {} - {}\n{}".format(
+            content = """
+Sigla - {}
+Presidente - {}
+Vice-Presidente - {}
+Plan o programa de gobierno - {}""".format(
                 metadata["sigla"],
                 metadata["president"],
                 metadata["vice_president"],
                 chunk,
             )
+            content = clean_text(content)
             splitted_document = Document(page_content=content, metadata=metadata)
             splitted_documents.append(splitted_document)
     print(f"Programas gubernamentales cargados: {len(splitted_documents)} documentos")
@@ -87,7 +104,7 @@ def load_calendar_metadata():
     splitted_documents = []
     for document in documents:
         page_content = json.loads(document.page_content)
-        content = "{}\n\n{}\nResolución {}\n\nFirmas \n\n{}".format(
+        content = "Titulo {}\n\nFecha {}\nResolución {}\n\nFirmas \n\n{}".format(
             page_content["title"],
             page_content["date"],
             page_content["resolution"],
@@ -98,6 +115,7 @@ def load_calendar_metadata():
                 ]
             ),
         )
+        content = clean_text(content)
         splitted_documents.append(
             Document(
                 page_content=content,
@@ -127,6 +145,7 @@ Plazo de Anticipación - {plazo}
 Referencia - {reference}
 Fuente - [calendario de elecciones generales 2025](https://fuentedirecta.oep.org.bo/noticia/el-tse-aprueba-el-calendario-electoral-para-las-elecciones-generales-2025)
 """.format(**page_content)
+        content = clean_text(content)
         splitted_documents.append(
             Document(
                 page_content=content,
