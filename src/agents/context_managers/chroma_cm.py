@@ -17,11 +17,13 @@ from src.consts import DocType
 
 from ...core.entities.context_manager import ContextManager
 from .prompts import (
-    CALENDAR_EVENT_TEMPLATE,
-    CALENDAR_METADATA_TEMPLATE,
+    CALENDAR_EVENT_PROMPT,
+    CALENDAR_METADATA_PROMPT,
+    CANDIDATES_PROMPT,
     CHAT_SYSTEM_PROMPT,
-    GOV_PROGRAM_TEMPLATE,
-    GOV_PROGRAM_TEMPLATE_DEFAULT,
+    GOV_PROGRAM_PROMPT,
+    NOT_FOUND_PROMPT,
+    VERIFICATION_PROMPT,
     VERIFICATION_TEMPLATE,
     VERIFICATION_TEMPLATE_DEFAULT,
 )
@@ -67,19 +69,21 @@ class ChromaContextManager(ContextManager):
 
         return [*system_messages, *messages]
 
-    def __format_verification(self, document: Document):
-        data = VERIFICATION_TEMPLATE_DEFAULT.copy()
-        data.update({**document.metadata, "body": document.page_content})
-        return VERIFICATION_TEMPLATE.format(**data)
+    def __format_verification(self, documents: list[Document]):
+        content = []
+        for document in documents:
+            data = VERIFICATION_TEMPLATE_DEFAULT.copy()
+            data.update({**document.metadata, "body": document.page_content})
+            content.append(VERIFICATION_TEMPLATE.format(**data))
+        return VERIFICATION_PROMPT.format(content="\n".join(content))
 
-    def __format_gov_program(self, document: Document):
-        data = GOV_PROGRAM_TEMPLATE_DEFAULT.copy()
-        data.update({**document.metadata, "content": document.page_content})
-        return GOV_PROGRAM_TEMPLATE.format(**data)
+    def __format_content(self, documents: list[Document]):
+        content = []
+        for document in documents:
+            content.append(document.page_content)
+        return "\n\n".join(content)
 
-    async def build_system_messages(
-        self, queries: Sequence[BaseMessage]
-    ) -> Sequence[SystemMessage]:
+    async def build_system_messages(self, queries: Sequence[BaseMessage]) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
         Args:
@@ -89,60 +93,65 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
-        k = 20
-        documents: list[Document] = []
-        contents = []
-        for query in queries[::-1]:
-            k = k // 3 if k >= 3 else k
-            retriver = self.vectorDB.as_retriever(search_kwargs={"k": k * 2})
-            docs = await retriver.ainvoke(str(query.content))
-            contents.append(query.content)
-            documents.extend(docs)
-        retriver = self.vectorDB.as_retriever(
-            search_kwargs={"k": k},
+        score_retriever = self.vectorDB.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"score_threshold": 0.1, "k": 10},
         )
-        extra_docs = await retriver.ainvoke(" ".join(contents))
-        documents.extend(extra_docs)
+        relevant_docs: list[Document] = []
+        complete_context = ""
+        for query in queries[::-1]:
+            query_str = str(query.content).lower()
+            relevant_docs += score_retriever.invoke(query_str)
+            complete_context += f"{query_str} "
+        relevant_docs += score_retriever.invoke(complete_context.strip())
+
+        content_type = {}
+        for doc in relevant_docs:
+            _type = doc.metadata.get("type")
+            if _type not in content_type:
+                content_type[_type] = 0
+            content_type[_type] += 1
+
+        best_match = max(content_type, key=lambda key: content_type.get(key, 0))
+        retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+        documents: list[Document] = await retriver.ainvoke(complete_context)
 
         current_date = datetime.now(UTC)
-        date_str = current_date.astimezone(
-            timezone(offset=timedelta(hours=-4), name="America/La_Paz")
-        ).strftime("%d de %B del %Y")
-
-        contents = []
-
-        for document in documents:
-            match document.metadata.get("type"):
-                case DocType.VERIFICATIONS.value:
-                    content = self.__format_verification(document)
-
-                    contents.append(content)
-                case DocType.GOV_PROGRAMS.value:
-                    content = self.__format_gov_program(document)
-                    contents.append(content)
-
-                case DocType.CALENDAR_META.value:
-                    content = CALENDAR_METADATA_TEMPLATE.format(
-                        content=document.page_content
-                    )
-                    contents.append(content)
-
-                case DocType.CALENDAR.value:
-                    content = CALENDAR_EVENT_TEMPLATE.format(
-                        content=document.page_content
-                    )
-                    contents.append(content)
-
-        total_content = "".join(contents)
-
-        system_prompt = SystemMessage(
-            content=CHAT_SYSTEM_PROMPT.format(
-                date=date_str,
-                content=total_content,
-            )
+        date_str = current_date.astimezone(timezone(offset=timedelta(hours=-4), name="America/La_Paz")).strftime(
+            "%d de %B del %Y"
         )
 
-        return [system_prompt]
+        system_prompts = [SystemMessage(content=CHAT_SYSTEM_PROMPT.format(date=date_str))]
+
+        match best_match:
+            case DocType.VERIFICATIONS.value:
+                content = self.__format_verification(documents)
+                system_prompts.append(SystemMessage(content))
+
+            case DocType.GOV_PROGRAMS.value:
+                content = self.__format_content(documents)
+                content = GOV_PROGRAM_PROMPT.format(content=content)
+                system_prompts.append(SystemMessage(content))
+
+            case DocType.CALENDAR_META.value:
+                content = self.__format_content(documents)
+                content = CALENDAR_METADATA_PROMPT.format(content=content)
+                system_prompts.append(SystemMessage(content))
+
+            case DocType.CALENDAR.value:
+                content = self.__format_content(documents)
+                content = CALENDAR_EVENT_PROMPT.format(content=content)
+                system_prompts.append(SystemMessage(content))
+
+            case DocType.CANDIDATES.value:
+                content = self.__format_content(documents)
+                content = CANDIDATES_PROMPT.format(content=content)
+                system_prompts.append(SystemMessage(content))
+
+            case _:
+                system_prompts.append(SystemMessage(NOT_FOUND_PROMPT))
+
+        return system_prompts
 
     async def trim_context(self, context) -> list[BaseMessage]:
         """Trim messages to fit within token limits using OpenAI token counting.
@@ -153,14 +162,10 @@ class ChromaContextManager(ContextManager):
         Returns:
             The trimmed list of messages that fit within the token limit.
         """
-        encoding = tiktoken.encoding_for_model("gpt-4.1-nano")
+        encoding = tiktoken.encoding_for_model("text-embedding-3-small")
 
         def count_tokens_openai(message_list: list[BaseMessage]):
-            return sum(
-                len(encoding.encode(str(msg.content)))
-                for msg in message_list
-                if hasattr(msg, "content")
-            )
+            return sum(len(encoding.encode(str(msg.content))) for msg in message_list if hasattr(msg, "content"))
 
         trimmed_user = trim_messages(
             context,

@@ -6,3 +6,4 @@ class DocType(Enum):
     GOV_PROGRAMS = "government_programs"
     CALENDAR_META = "calendar_metadata"
     CALENDAR = "calendar"
+    CANDIDATES = 'candidates'
