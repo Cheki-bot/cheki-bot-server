@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     allow_origins: Annotated[list[str], NoDecode]
     telegram_token: SecretStr
     chekibot_api: str
+    whatsapp_token: str
+    whatsapp_phone_id: str
+    whatsapp_verify_token: str
 
     # model configurations
     model_config = SettingsConfigDict(
