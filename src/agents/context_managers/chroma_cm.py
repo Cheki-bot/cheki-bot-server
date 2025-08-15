@@ -23,6 +23,7 @@ from .prompts import (
     CHAT_SYSTEM_PROMPT,
     GOV_PROGRAM_PROMPT,
     NOT_FOUND_PROMPT,
+    Q_A_PROMPT,
     VERIFICATION_PROMPT,
     VERIFICATION_TEMPLATE,
     VERIFICATION_TEMPLATE_DEFAULT,
@@ -95,7 +96,7 @@ class ChromaContextManager(ContextManager):
 
         score_retriever = self.vectorDB.as_retriever(
             search_type="similarity_score_threshold",
-            search_kwargs={"score_threshold": 0.1, "k": 10},
+            search_kwargs={"score_threshold": 0.1, "k": 3},
         )
         relevant_docs: list[Document] = []
         complete_context = ""
@@ -112,9 +113,9 @@ class ChromaContextManager(ContextManager):
                 content_type[_type] = 0
             content_type[_type] += 1
 
-        best_match = max(content_type, key=lambda key: content_type.get(key, 0))
-        retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
-        documents: list[Document] = await retriver.ainvoke(complete_context)
+        best_match = ""
+        if content_type:
+            best_match = str(max(content_type, key=lambda key: content_type.get(key, 0)))
 
         current_date = datetime.now(UTC)
         date_str = current_date.astimezone(timezone(offset=timedelta(hours=-4), name="America/La_Paz")).strftime(
@@ -125,27 +126,53 @@ class ChromaContextManager(ContextManager):
 
         match best_match:
             case DocType.VERIFICATIONS.value:
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10, "filter": {"type": best_match}})
+                documents = await retriver.ainvoke(complete_context)
                 content = self.__format_verification(documents)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.GOV_PROGRAMS.value:
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = GOV_PROGRAM_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR_META.value:
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_METADATA_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR.value:
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_EVENT_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CANDIDATES.value:
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CANDIDATES_PROMPT.format(content=content)
+                system_prompts.append(SystemMessage(content))
+
+            case DocType.Q_A.value:
+                retriver = self.vectorDB.as_retriever(
+                    search_type="similarity_score_threshold",
+                    search_kwargs={"score_threshold": 0.1, "k": 1, "filter": {"type": best_match}},
+                )
+                query = queries[-1]
+                query_str = str(query.content) if len(queries) > 0 else ""  # type: ignore
+                query_str = query_str.strip().lower()
+                documents = await retriver.ainvoke(query_str)
+                content = ""
+                for doc in documents:
+                    content = f"Question: {doc.page_content}\nAnswer: {doc.metadata.get('answer', '')}\n"
+
+                content = Q_A_PROMPT.format(question="query", content=content.strip())
                 system_prompts.append(SystemMessage(content))
 
             case _:

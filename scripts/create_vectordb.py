@@ -205,7 +205,7 @@ def load_questions_and_answers():
 
     def parse(document: Document):
         content: dict = json.loads(document.page_content)
-        question = content["question"]
+        question = content["question"].strip().lower()
         answer = content["answer"]
         return Document(page_content=question, metadata={"type": DocType.Q_A.value, "answer": answer})
 
