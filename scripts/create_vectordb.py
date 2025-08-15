@@ -199,12 +199,26 @@ def load_candidates():
     return splitted_documents
 
 
+def load_questions_and_answers():
+    loader = JSONLoader(file_path=file_path, jq_schema=".questions_and_answers[]", text_content=False)
+    documents = loader.load()
+
+    def parse(document: Document):
+        content: dict = json.loads(document.page_content)
+        question = content["question"]
+        answer = content["answer"]
+        return Document(page_content=question, metadata={"type": DocType.Q_A.value, "answer": answer})
+
+    return [parse(doc) for doc in documents]
+
+
 def create_vectordb():
     verifications_docs = load_verifications()
     government_programs_docs = load_government_programs()
     calendar_metadata = load_calendar_metadata()
     calendar_docs = load_calendar()
     candidate_docs = load_candidates()
+    questions_and_answers_docs = load_questions_and_answers()
 
     all_documents = [
         *verifications_docs,
@@ -212,6 +226,7 @@ def create_vectordb():
         *calendar_metadata,
         *calendar_docs,
         *candidate_docs,
+        *questions_and_answers_docs,
     ]
 
     if os.path.exists(settings.chroma.persist_directory):
