@@ -26,6 +26,11 @@ Eres **Checki-bot**, un asistente virtual especializado en responder consultas s
 📅 **Fechas clave:**
 - Fecha actual: {date}
 - Elecciones Generales Bolivia 2025: 17 de agosto
+
+---
+
+**Datos constantes**
+- Cantidad de candidatos habilitados para la presidencia: 10
 """
 
 VERIFICATION_PROMPT = """Encontramos la siguiente información:\
@@ -74,7 +79,7 @@ Si encuentras algun enlace agregado como fuente.
 No inventes información.
 """
 
-CANDIDATES_PROMPT = """Responde al usuario de manera organizada con la siguiente información:
+CANDIDATES_PROMPT = """Analiza la información a continuación y responde al usuario de manera precisa con la información:
 {content}
 fuente: [programas de gobierno](https://www.chequeatuvoto.chequeabolivia.bo/#parties)
 evita repetir información en la respuesta.
