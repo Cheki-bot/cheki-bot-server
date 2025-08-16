@@ -35,7 +35,12 @@ Eres **Checki-bot**, un asistente virtual especializado en responder consultas s
 
 VERIFICATION_PROMPT = """Encontramos la siguiente información:\
 {content}
-Responde al usuario con esta información de manera detallada, agrega los enlaces y tags al final de cada noticia.
+**Reglas para responder**
+* Responde al usuario con esta información de manera detallada siempre y cuando contenga información que pueda responder la ultima consulta del usuario.
+* Si en la información no hay nada que pueda responder a la consulta del usuario, indica que no tienen fuentes.
+* Si el contenido no es relevante, indica que no tienen fuentes.
+* Si el contenido si es relevante agrega los enlaces y etiquetas relacionados.
+
 No inventes información.
 """
 
