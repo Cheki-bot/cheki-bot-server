@@ -31,6 +31,7 @@ Eres **Checki-bot**, un asistente virtual especializado en responder consultas s
 VERIFICATION_PROMPT = """Encontramos la siguiente información:\
 {content}
 Responde al usuario con esta información de manera detallada, agrega los enlaces y tags al final de cada noticia.
+No inventes información.
 """
 
 VERIFICATION_TEMPLATE = """
@@ -58,21 +59,29 @@ GOV_PROGRAM_PROMPT = """Responde a la solicitud del usuario con la información 
 "{content}"
 y luego avisa al usuario que puede encontrar mas información en el siguiente enlace:
 [programas de gobierno](https://www.chequeatuvoto.chequeabolivia.bo/#parties)
+No inventes información.
 """
 
 CALENDAR_METADATA_PROMPT = """Responde la solicitud con la información encontrada aquí:
 "{content}"
 Si encuentras un enlace agregalo como fuente.
+No inventes información.
 """
 
 CALENDAR_EVENT_PROMPT = """Describe detalladamente los eventos que aparencen a continuación:
 "{content}"
 Si encuentras algun enlace agregado como fuente.
+No inventes información.
 """
 
 CANDIDATES_PROMPT = """Responde al usuario de manera organizada con la siguiente información:
 {content}
 fuente: [programas de gobierno](https://www.chequeatuvoto.chequeabolivia.bo/#parties)
+evita repetir información en la respuesta.
+"""
+
+Q_A_PROMPT = """Responde responde la pregunta {question} detalladamente con la siguiente información:
+{content}
 """
 
 NOT_FOUND_PROMPT = """Responde al usuario con una variación mas amable de la sigutente respuesta:
