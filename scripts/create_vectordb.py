@@ -74,6 +74,11 @@ def load_government_programs():
         sigla = program["sigla"]
         president = program["president"]
         vice_president = program["vice_president"]
+        status = program.get("status")
+        if status and status == "no participa":
+            metadata = {"status": status, "type": DocType.GOV_PROGRAMS.value}
+            page_content = f"El partido {party} ({sigla}) binomio {president} y {vice_president} decidieron no participar como candidatos en las elecciones"
+            continue
         government_plan = program["government_plan"]
         for index, (key, value) in enumerate(government_plan.items()):
             title = str(key).replace("_", " ")
@@ -81,6 +86,7 @@ def load_government_programs():
             _ = str(value.get("content", ""))
             num_seq = index + 1
             metadata = {"num_seq": num_seq, "type": DocType.GOV_PROGRAMS.value}
+
             chunks = splitter.split_text(summary)
             for chunk in chunks:
                 page_content = "\n".join(
@@ -163,39 +169,23 @@ def load_candidates():
     with open(file_path, "r") as f:
         database = json.load(f)
     candidates: list = database["candidates"]
-    header = "CANDIDATURAS\n"
-    header += "Lista de candidatos a la elecciones presidenciales de bolivia (2025-2030)"
     candidates_list = ""
     candidates_list_with_summary = ""
     splitted_documents: list[Document] = []
     for candidate in candidates:
-        candidates_list += f"- {candidate['candidate']}\n"
-        candidates_list_with_summary += f"{candidates_list}{candidate['summary']}\n"
+        candidates_list += f"- {candidate['candidate'].strip()}\n"
+        candidates_list_with_summary += f"- {candidate['candidate'].strip()}\n\t{candidate['summary']}\n\n"
+    candidates_list = candidates_list.strip()
+    document = Document(
+        "quienes estan postulantes, lista de candidatos a las elecciones, portulantes a las elecciones, lista de candidatos con detalles, cuales son los candidatos",
+        metadata={
+            "type": DocType.CANDIDATES.value,
+            "candidates": candidates_list,
+            "summaries": candidates_list_with_summary,
+        },
+    )
+    splitted_documents.append(document)
 
-    chunks = splitter.split_text(candidates_list)
-    for index, chuck in enumerate(chunks):
-        num_seq = index + 1
-        page_content = f"{header} Parte {num_seq}\n{chuck} "
-        splitted_document = Document(
-            page_content=page_content.lower(),
-            metadata={
-                "num_seq": num_seq,
-                "type": DocType.CANDIDATES.value,
-            },
-        )
-        splitted_documents.append(splitted_document)
-    chunks = splitter.split_text(candidates_list_with_summary)
-    for index, chuck in enumerate(chunks):
-        num_seq = index + 1
-        page_content = f"{header} y resumen de propuestas Parte {num_seq}\n{chuck} "
-        splitted_document = Document(
-            page_content=page_content.lower(),
-            metadata={
-                "num_seq": num_seq,
-                "type": DocType.CANDIDATES.value,
-            },
-        )
-        splitted_documents.append(splitted_document)
     return splitted_documents
 
 

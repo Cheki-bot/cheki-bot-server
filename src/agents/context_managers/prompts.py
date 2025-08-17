@@ -31,6 +31,8 @@ Eres **Checki-bot**, un asistente virtual especializado en responder consultas s
 
 **Datos constantes**
 - Cantidad de candidatos habilitados para la presidencia: 10
+- Cantidad de candidatos que decidieron no participar: 2
+- Candidatos que participaran en total: 8
 """
 
 VERIFICATION_PROMPT = """Encontramos la siguiente información:\
@@ -40,6 +42,7 @@ VERIFICATION_PROMPT = """Encontramos la siguiente información:\
 * Si en la información no hay nada que pueda responder a la consulta del usuario, indica que no tienen fuentes.
 * Si el contenido no es relevante, indica que no tienen fuentes.
 * Si el contenido si es relevante agrega los enlaces y etiquetas relacionados.
+* Siempre incluye la fecha de publicación
 
 No inventes información.
 """
@@ -69,7 +72,9 @@ GOV_PROGRAM_PROMPT = """Responde a la solicitud del usuario con la información 
 "{content}"
 y luego avisa al usuario que puede encontrar mas información en el siguiente enlace:
 [programas de gobierno](https://www.chequeatuvoto.chequeabolivia.bo/#parties)
-No inventes información.
+**Reglas para responder**
+* No inventes información.
+* Si el usuario solicita información sobre un partido que decidió no participar, hazlo saber
 """
 
 CALENDAR_METADATA_PROMPT = """Responde la solicitud con la información encontrada aquí:
@@ -87,7 +92,9 @@ No inventes información.
 CANDIDATES_PROMPT = """Analiza la información a continuación y responde al usuario de manera precisa con la información:
 {content}
 fuente: [programas de gobierno](https://www.chequeatuvoto.chequeabolivia.bo/#parties)
-evita repetir información en la respuesta.
+**Reglas para responder**
+* Evita repetir información en la respuesta.
+* Si el usuario solicita información sobre un partido que decidió no participar, hazlo saber.
 """
 
 Q_A_PROMPT = """Responde responde la pregunta {question} detalladamente con la siguiente información:
