@@ -94,24 +94,35 @@ class ChromaContextManager(ContextManager):
             A SystemMessage containing the formatted context from the database.
         """
 
-        score_retriever = self.vectorDB.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={"score_threshold": 0.1, "k": 3},
-        )
-        relevant_docs: list[Document] = []
+        relevant_docs: list[tuple[Document, float]] = []
         complete_context = ""
+        focus = 1.0
         for query in queries[::-1]:
             query_str = str(query.content).lower()
-            relevant_docs += score_retriever.invoke(query_str)
+            scores = await self.vectorDB.asimilarity_search_with_relevance_scores(
+                query_str,
+                k=3,
+                score_threshold=0.1,
+            )
+            relevant_docs = [(doc, score * focus) for doc, score in scores]
             complete_context += f"{query_str} "
-        relevant_docs += score_retriever.invoke(complete_context.strip())
+            focus *= 0.5
+        relevant_docs += await self.vectorDB.asimilarity_search_with_relevance_scores(
+            complete_context,
+            k=3,
+            score_threshold=0.1,
+        )
 
-        content_type = {}
-        for doc in relevant_docs:
+        content_type = {}  # type: ignore
+        for doc, score in relevant_docs:
             _type = doc.metadata.get("type")
             if _type not in content_type:
-                content_type[_type] = 0
-            content_type[_type] += 1
+                content_type[_type] = []
+            content_type[_type].append(score)
+
+        # Calculate median instead of average
+        for _type in content_type:
+            content_type[_type] = sorted(content_type[_type])[len(content_type[_type]) // 2]
 
         best_match = ""
         if content_type:
@@ -155,7 +166,11 @@ class ChromaContextManager(ContextManager):
             case DocType.CANDIDATES.value:
                 retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
-                content = self.__format_content(documents)
+                content = ""
+                for doc in documents:
+                    content += doc.page_content + "\n"
+                    content += doc.metadata["candidates"] + "\n"
+                    content += "Resumen de propuestas\n" + doc.metadata["summaries"]
                 content = CANDIDATES_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
