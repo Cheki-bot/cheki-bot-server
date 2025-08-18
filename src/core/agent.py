@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Sequence
+from typing import Literal, Sequence
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -51,7 +51,12 @@ class Agent(ABC):
             output = output.replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
             yield output
 
-    async def invoke(self, query: str, history: Sequence[BaseMessage]) -> str:
+    async def invoke(
+        self,
+        query: str,
+        history: Sequence[BaseMessage],
+        platform: Literal["telegram", "whatsapp", "web"] = "web",
+    ) -> str:
         """Process a query and generate a response using context-aware reasoning.
 
         Retrieves relevant context based on the query and conversation history,
