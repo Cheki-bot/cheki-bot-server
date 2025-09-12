@@ -1,0 +1,113 @@
+classDiagram
+    class PoliticalParty {
+        +int id
+        +str name
+        +str sigla
+        +str description
+    }
+
+    class Politician {
+        +int id
+        +str full_name
+        +str position
+        +str photo_url
+        +dict social_media
+        +list political_history
+    }
+
+    class GovernmentItem {
+        +str header
+        +str content
+        +str summary
+    }
+
+    class GovernmentProgram {
+        +int id
+        +str title
+        +str description
+    }
+
+    class Candidacy {
+        +int election_year
+        +str status
+    }
+
+    class CalendarSignature {
+        +str full_name
+        +str possition
+    }
+
+    class Event {
+        +str scenery
+        +int no
+        +str activity
+        +int days
+        +datetime from_date
+        +datetime to_date
+        +int duration
+        +str reference
+        +str place
+    }
+
+    class ElectoralCalendar {
+        +int id
+        +str filename
+        +str title
+        +str resolution
+        +datetime date
+        +str introduction
+    }
+
+    class Election {
+        +int id
+        +str name
+        +datetime election_date
+        +str status
+    }
+
+    class NewsClassification {
+        <<enumeration>>
+        FALSE
+        TRUE
+        MISLEADING
+        PHOTO_MONTAGE
+        FALSE_BUT
+        TRUE_BUT
+    }
+
+    class NewsTag {
+        +str name
+        +str url
+    }
+
+    class NewsVerification {
+        +int id
+        +int title
+        +str section_url
+        +str summary
+        +str body
+        +str url
+        +datetime publication_date
+    }
+
+    %% --- Relationships ---
+
+    %% Candidacy Info
+    Politician "1" --o "1" PoliticalParty : party
+    Candidacy "1" --o "1" PoliticalParty : party
+    Candidacy "1" --o "*" Politician : candidates
+    Candidacy "1" --o "0..1" GovernmentProgram : government_program
+    GovernmentProgram "1" --o "*" GovernmentItem : government_plan
+
+    %% Calendar Info
+    ElectoralCalendar "1" --o "*" CalendarSignature : signatures
+    ElectoralCalendar "1" --o "*" Event : events
+    
+    %% Election Info
+    Election "1" --o "1" ElectoralCalendar : electoral_calendar
+    Election "1" --o "*" Candidacy : candidacies
+    Election "1" --o "0..1" Candidacy : winner
+
+    %% Verifications Info
+    NewsVerification "1" --o "1" NewsClassification : classified_as
+    NewsVerification "1" --o "*" NewsTag : tags
