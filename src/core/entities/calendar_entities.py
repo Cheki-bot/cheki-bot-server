@@ -1,5 +1,5 @@
 # Calendar Entities
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
@@ -31,5 +31,5 @@ class ElectoralCalendar:
     resolution: str
     date: datetime
     introduction: Optional[str] = None
-    signatures: List[CalendarSignature] = []
-    events: List[Event] = []
+    signatures: List[CalendarSignature] = field(default_factory=list)
+    events: List[Event] = field(default_factory=list)

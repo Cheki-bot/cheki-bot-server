@@ -1,5 +1,5 @@
 # Political Entities
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -34,7 +34,7 @@ class GovernmentProgram:
     id: int
     title: str
     description: Optional[str] = None
-    government_plan: List[GovernmentItem] = []
+    government_plan: List[GovernmentItem] = field(default_factory=list)
 
 
 @dataclass
