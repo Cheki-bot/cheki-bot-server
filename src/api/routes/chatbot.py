@@ -1,8 +1,7 @@
+import json
 import os
 import re
-import json
 import traceback
-from telegram import Bot
 from json import JSONDecodeError
 from typing import Annotated, Any, Dict
 
@@ -15,16 +14,18 @@ from fastapi import (
 )
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
+from telegram import Bot
 
 from src.api.deps import get_agent
-from src.api.models import QueryRequest
+from src.api.schemas import QueryRequest
 from src.core.agent import Agent
 
+
 def limpiar_markdown(texto: str) -> str:
-    texto = re.sub(r'(\*\*|__|\*|_)', '', texto)
-    texto = re.sub(r'#+\s', '', texto)
-    texto = re.sub(r'^\s*[\*\-]\s*|\d+\.\s*', '', texto, flags=re.MULTILINE)
-    texto = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', texto)
+    texto = re.sub(r"(\*\*|__|\*|_)", "", texto)
+    texto = re.sub(r"#+\s", "", texto)
+    texto = re.sub(r"^\s*[\*\-]\s*|\d+\.\s*", "", texto, flags=re.MULTILINE)
+    texto = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", texto)
     return texto.strip()
 
 
@@ -56,9 +57,7 @@ async def websocket_endpoint(
         query = QueryRequest.model_validate(data)
 
         messages = [
-            HumanMessage(content=msg.content)
-            if msg.role == "user"
-            else AIMessage(content=msg.content)
+            HumanMessage(content=msg.content) if msg.role == "user" else AIMessage(content=msg.content)
             for msg in query.history
         ]
 
@@ -114,6 +113,4 @@ async def telegram_webhook(
     except Exception as e:
         print("error")
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Error processing message: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")
