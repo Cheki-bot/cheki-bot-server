@@ -1,22 +1,18 @@
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Sequence
 
-import tiktoken
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.messages import (
     BaseMessage,
-    HumanMessage,
     SystemMessage,
-    trim_messages,
 )
-from langchain_core.vectorstores import VectorStore
+from langchain_mongodb import MongoDBAtlasVectorSearch
 
 from src import ENV
+from src.agents.context_managers.chroma_cm import ChromaContextManager
 from src.consts import DocType
 
-from ...core.entities.context_manager import ContextManager
 from .prompts import (
     CALENDAR_EVENT_PROMPT,
     CALENDAR_METADATA_PROMPT,
@@ -31,45 +27,18 @@ from .prompts import (
 )
 
 
-class ChromaContextManager(ContextManager):
-    """A context manager that retrieves and trims context from a Chroma vector database.
-
-    This class handles the retrieval of relevant context from a Chroma vector database
-    based on user queries and manages the trimming of messages to fit within token limits.
-
-    Attributes:
-        vectorDB: The Chroma vector database instance for storing and retrieving embeddings.
-    """
-
+class MongoContextManager(ChromaContextManager):
     def __init__(self, emb_model: Embeddings) -> None:
-        """Initialize the ChromaContextManager with an embedding model.
-
-        Args:
-            emb_model: The embedding model to use for vectorization.
-        """
-        self.vectorDB: VectorStore = Chroma(
-            persist_directory=ENV.chroma.persist_directory,
-            embedding_function=emb_model,
+        self.vectorDB = MongoDBAtlasVectorSearch.from_connection_string(
+            connection_string=ENV.mongo.uri,
+            db_name=ENV.mongo.db_name,
+            collection_name=ENV.mongo.collection_name,
+            embedding=emb_model,
+            index_name=ENV.mongo.index_name,
+            relevance_score_fn="cosine",
+            namespace=f"{ENV.mongo.db_name}.{ENV.mongo.collection_name}",
         )
-
-    async def retrieve_context(self, query, history):
-        """Retrieve context from the vector database and build a system message.
-
-        Args:
-            query: The user's query string.
-            history: The conversation history.
-
-        Returns:
-            The trimmed context messages including system message.
-        """
-        query_message = HumanMessage(content=query)
-        messages = await self.trim_context([*history, query_message])
-
-        user_message = filter(lambda msg: isinstance(msg, HumanMessage), messages)
-
-        system_messages = await self.build_system_messages(list(user_message)[-3:])
-
-        return [*system_messages, *messages]
+        self.vectorDB.create_vector_search_index(ENV.mongo.dimensions, ["type"])
 
     def __format_verification(self, documents: list[Document]):
         content = []
@@ -138,34 +107,34 @@ class ChromaContextManager(ContextManager):
 
         match best_match:
             case DocType.VERIFICATIONS.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10, "filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10, "pre_filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_verification(documents)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.GOV_PROGRAMS.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = GOV_PROGRAM_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR_META.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_METADATA_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_EVENT_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CANDIDATES.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
                 documents = await retriver.ainvoke(complete_context)
                 content = ""
                 for doc in documents:
@@ -178,7 +147,7 @@ class ChromaContextManager(ContextManager):
             case DocType.Q_A.value:
                 retriver = self.vectorDB.as_retriever(
                     search_type="similarity_score_threshold",
-                    search_kwargs={"score_threshold": 0.1, "k": 1, "filter": {"type": best_match}},
+                    search_kwargs={"score_threshold": 0.1, "k": 1, "pre_filter": {"type": best_match}},
                 )
                 query = queries[-1]
                 query_str = str(query.content) if len(queries) > 0 else ""  # type: ignore
@@ -195,29 +164,3 @@ class ChromaContextManager(ContextManager):
                 system_prompts.append(SystemMessage(NOT_FOUND_PROMPT))
 
         return system_prompts
-
-    async def trim_context(self, context) -> list[BaseMessage]:
-        """Trim messages to fit within token limits using OpenAI token counting.
-
-        Args:
-            context: List of message objects to trim.
-
-        Returns:
-            The trimmed list of messages that fit within the token limit.
-        """
-        encoding = tiktoken.encoding_for_model("text-embedding-3-small")
-
-        def count_tokens_openai(message_list: list[BaseMessage]):
-            return sum(len(encoding.encode(str(msg.content))) for msg in message_list if hasattr(msg, "content"))
-
-        trimmed_user = trim_messages(
-            context,
-            token_counter=count_tokens_openai,
-            max_tokens=ENV.llm.context_length,
-            strategy="last",
-            start_on="human",
-            end_on=("human", "tool"),
-            include_system=True,
-        )
-
-        return trimmed_user

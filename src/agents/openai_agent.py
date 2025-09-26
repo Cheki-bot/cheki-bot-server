@@ -1,8 +1,9 @@
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+from src.agents.context_managers.mongo_cm import MongoContextManager
+
 from .. import ENV
 from ..core.agent import Agent
-from .context_managers.chroma_cm import ChromaContextManager
 
 
 class OpenAIAgent(Agent):
@@ -14,7 +15,7 @@ class OpenAIAgent(Agent):
                 temperature=ENV.llm.temperature,
                 max_completion_tokens=ENV.llm.max_tokens,
             ),
-            context_manager=ChromaContextManager(
+            context_manager=MongoContextManager(
                 emb_model=OpenAIEmbeddings(
                     model=ENV.llm.emb_model,
                     api_key=ENV.llm.api_key,

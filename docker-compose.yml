@@ -8,3 +8,20 @@ services:
     env_file:
       - .env
     restart: always
+
+  dev_mongo_db:
+    image: mongodb/mongodb-atlas-local:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: username
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_AUTH_SOURCE: admin
+      MONGO_INITDB_DATABASE: checkibot_db
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+volumes:
+  mongodb_data:

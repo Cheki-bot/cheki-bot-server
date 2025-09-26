@@ -1,12 +1,11 @@
 import json
-import os
 import re
 
 import tiktoken
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
 from langchain_community.document_loaders import JSONLoader
 from langchain_core.documents import Document
+from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
 
 from src.consts import DocType
@@ -16,10 +15,12 @@ settings = Settings(_env_file=".env")
 
 folder = "base_file"
 file_path = f"{folder}/{settings.google.data_filename}"
+
 embedding = OpenAIEmbeddings(
     model=settings.llm.emb_model,
     api_key=settings.llm.api_key,
 )
+
 encoding = tiktoken.encoding_for_model("text-embedding-3-small")
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=150,
@@ -219,17 +220,27 @@ def create_vectordb():
         *questions_and_answers_docs,
     ]
 
-    if os.path.exists(settings.chroma.persist_directory):
-        vectordb = Chroma(
-            persist_directory=settings.chroma.persist_directory,
-            embedding_function=embedding,
-        )
-        vectordb.delete_collection()
-    vectordb = Chroma.from_documents(
-        documents=all_documents,
+    vectordb = MongoDBAtlasVectorSearch.from_connection_string(
+        connection_string=settings.mongo.uri,
+        db_name=settings.mongo.db_name,
+        collection_name=settings.mongo.collection_name,
         embedding=embedding,
-        persist_directory=settings.chroma.persist_directory,
+        index_name=settings.mongo.index_name,
+        relevance_score_fn="cosine",
+        namespace=f"{settings.mongo.db_name}.{settings.mongo.collection_name}",
     )
 
-    print(f"Base de datos vectorial creada y persistida en: {settings.chroma.persist_directory}")
+    for idx in vectordb.collection.list_search_indexes():
+        if idx["name"] == settings.mongo.index_name:
+            vectordb.collection.drop_search_index(settings.mongo.index_name)
+            print(f"Index {settings.mongo.index_name} dropped")
+            break
+    else:
+        print(f"Creating index {settings.mongo.index_name}")
+        vectordb.create_vector_search_index(settings.mongo.dimensions, ["type"])
+
+    vectordb.collection.delete_many({})
+    vectordb.add_documents(documents=all_documents)
+
+    print("Base de datos vectorial creada y persistida")
     return vectordb
