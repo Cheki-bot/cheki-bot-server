@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from langchain_core.chat_history import BaseChatMessageHistory
 
-from src.core.agent import Agent
+from src.agent.agent import Agent
 
 
 @pytest.fixture
@@ -27,9 +27,7 @@ def agent(mock_chat_model, mock_context_manager):
 
 
 @pytest.mark.asyncio
-async def test_stream_success(
-    agent, mock_chat_model, mock_context_manager, mock_history
-):
+async def test_stream_success(agent, mock_chat_model, mock_context_manager, mock_history):
     query = "test query"
     mock_messages = ["message1", "message2"]
     mock_context_manager.retrieve_context = AsyncMock(return_value=mock_messages)
@@ -50,9 +48,7 @@ async def test_stream_success(
 
 
 @pytest.mark.asyncio
-async def test_stream_empty_query(
-    agent, mock_chat_model, mock_context_manager, mock_history
-):
+async def test_stream_empty_query(agent, mock_chat_model, mock_context_manager, mock_history):
     query = ""
     mock_messages = ["message1"]
     mock_context_manager.retrieve_context = AsyncMock(return_value=mock_messages)
@@ -72,9 +68,7 @@ async def test_stream_empty_query(
 
 
 @pytest.mark.asyncio
-async def test_stream_with_special_characters(
-    agent, mock_chat_model, mock_context_manager, mock_history
-):
+async def test_stream_with_special_characters(agent, mock_chat_model, mock_context_manager, mock_history):
     query = "test with special chars: !@#$%^&*()"
     mock_messages = ["message with special chars: !@#$%^"]
     mock_context_manager.retrieve_context = AsyncMock(return_value=mock_messages)
@@ -94,9 +88,7 @@ async def test_stream_with_special_characters(
 
 
 @pytest.mark.asyncio
-async def test_stream_handles_empty_history(
-    agent, mock_chat_model, mock_context_manager
-):
+async def test_stream_handles_empty_history(agent, mock_chat_model, mock_context_manager):
     query = "test"
     mock_messages = ["message"]
     mock_context_manager.retrieve_context = AsyncMock(return_value=mock_messages)

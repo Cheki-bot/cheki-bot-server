@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
 
-from src.consts import DocType
+from src.agent.schemas import DocType
 from src.settings import Settings
 
 settings = Settings(_env_file=".env")

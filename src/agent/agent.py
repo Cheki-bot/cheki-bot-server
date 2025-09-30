@@ -4,9 +4,7 @@ from typing import Literal, Sequence
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 
-from src.core.conts import THINK_TAGS
-
-from .entities.context_manager import ContextManager
+from .context_manager import ContextManager
 
 
 class Agent(ABC):
@@ -48,7 +46,6 @@ class Agent(ABC):
         messages = await self.context_manager.retrieve_context(query, history)
         async for chunk in self.chat_model.astream(messages):
             output = str(chunk.content)
-            output = output.replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
             yield output
 
     async def invoke(
@@ -78,4 +75,4 @@ class Agent(ABC):
         """
         messages = await self.context_manager.retrieve_context(query, history)
         output = await self.chat_model.ainvoke(messages)
-        return str(output.content).replace(THINK_TAGS[0], "").replace(THINK_TAGS[1], "")
+        return str(output.content)

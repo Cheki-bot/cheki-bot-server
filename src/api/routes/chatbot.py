@@ -16,9 +16,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 from telegram import Bot
 
+from src.agent.agent import Agent
 from src.api.deps import get_agent
 from src.api.schemas import QueryRequest
-from src.core.agent import Agent
 
 
 def limpiar_markdown(texto: str) -> str:

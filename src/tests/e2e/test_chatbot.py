@@ -1,9 +1,9 @@
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
+from src.agent.agent import Agent
 from src.api.app import create_app
 from src.api.deps import get_agent
-from src.core.agent import Agent
 
 
 class MockAgent(Agent):
