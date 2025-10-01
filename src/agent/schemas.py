@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +29,6 @@ class Topic(str, Enum):
 class TopicSelection(BaseModel):
     topic: Topic
     description: str
-    user_query: Optional[str] = None
-    optimized_query: Optional[str] = None
+    user_query: str = ""
+    optimized_query: str = ""
     additional_topics: list[Topic] = Field(default_factory=list)
