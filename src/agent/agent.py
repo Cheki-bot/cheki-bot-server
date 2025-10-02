@@ -1,13 +1,13 @@
-from abc import ABC
 from typing import Literal, Sequence
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, SystemMessage
 
-from .context_manager import ContextManager
+from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, AsyncSelectPrompt
+from src.agent.schemas import AgentResponseChunk
 
 
-class Agent(ABC):
+class AsyncAgent:
     """Abstract base class for all agents in the system.
 
     This class provides the foundational structure for agents that interact with
@@ -19,17 +19,25 @@ class Agent(ABC):
         context_manager (ContextManager): Manager for retrieving and handling context.
     """
 
-    def __init__(self, chat_model: BaseChatModel, context_manager: ContextManager):
-        """Initialize the Agent with a chat model and context manager.
+    def __init__(
+        self,
+        chat_model: BaseChatModel,
+        classify_topic: AsyncClassifyTopic,
+        rag_retrieve: AsyncRAGRetrieve,
+        select_prompt: AsyncSelectPrompt,
+    ):
+        """Initialize the AsyncAgent with a chat model and context manager.
 
         Args:
             chat_model (BaseChatModel): The language model to use for responses.
             context_manager (ContextManager): The manager for handling context retrieval.
         """
         self.chat_model = chat_model
-        self.context_manager = context_manager
+        self.classify_topic = classify_topic
+        self.rag_retrieve = rag_retrieve
+        self.select_prompt = select_prompt
 
-    async def stream(self, query: str, history: Sequence[BaseMessage]):
+    async def stream(self, messages: Sequence[BaseMessage]):
         """Stream response chunks for a given query and chat history.
 
         This method retrieves relevant context using the context manager,
@@ -43,15 +51,32 @@ class Agent(ABC):
         Yields:
             str: Response chunks as they become available.
         """
-        messages = await self.context_manager.retrieve_context(query, history)
-        async for chunk in self.chat_model.astream(messages):
-            output = str(chunk.content)
-            yield output
+        try:
+            yield AgentResponseChunk(content="Analizando consulta ...")
+            topic_selection = await self.classify_topic(messages)
+            yield AgentResponseChunk(content="Obteniendo información...")
+            documents = await self.rag_retrieve(topic_selection)
+            yield AgentResponseChunk(content="Procesando información...")
+            prompt = await self.select_prompt(topic_selection)
+            yield AgentResponseChunk(content="Generando respuesta...")
+            data = ""
+            for document in documents:
+                data += f"{document.page_content}\n\n"
+
+            system_prompt = prompt.format(data=data)
+            messages = [SystemMessage(content=system_prompt), *messages]
+
+            async for chunk in self.chat_model.astream(messages):
+                yield AgentResponseChunk(content=str(chunk.content), type="text")
+
+            yield AgentResponseChunk(content="", type="text", done=True)
+
+        except Exception as e:
+            yield AgentResponseChunk(content=f"Error: {str(e)}", type="error", done=True)
 
     async def invoke(
         self,
-        query: str,
-        history: Sequence[BaseMessage],
+        messages: Sequence[BaseMessage],
         platform: Literal["telegram", "whatsapp", "web"] = "web",
     ) -> str:
         """Process a query and generate a response using context-aware reasoning.
@@ -68,11 +93,21 @@ class Agent(ABC):
             str: The generated response text with thinking tags removed
 
         Example:
-            >>> agent = Agent()
+            >>> agent = AsyncAgent()
             >>> response = await agent.invoke("What is AI?", [])
             >>> print(response)
             "AI stands for Artificial Intelligence..."
         """
-        messages = await self.context_manager.retrieve_context(query, history)
+
+        topic_selection = await self.classify_topic(messages)
+        documents = await self.rag_retrieve(topic_selection)
+        prompt = await self.select_prompt(topic_selection)
+        data = ""
+        for document in documents:
+            data += f"{document.page_content}\n\n"
+
+        system_prompt = prompt.format(data=data)
+        messages = [SystemMessage(content=system_prompt), *messages]
+
         output = await self.chat_model.ainvoke(messages)
         return str(output.content)

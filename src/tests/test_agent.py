@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from langchain_core.chat_history import BaseChatMessageHistory
 
-from src.agent.agent import Agent
+from src.agent.agent import AsyncAgent
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def mock_history():
 
 @pytest.fixture
 def agent(mock_chat_model, mock_context_manager):
-    return Agent(chat_model=mock_chat_model, context_manager=mock_context_manager)
+    return AsyncAgent(chat_model=mock_chat_model, context_manager=mock_context_manager)
 
 
 @pytest.mark.asyncio

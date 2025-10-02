@@ -37,7 +37,7 @@ class ApiUserMessage(HumanMessage):
     )
 
 
-class WebsocketResponse(BaseModel):
+class AgentChunkResponse(BaseModel):
     content: str = Field(
         ...,
         description="The content of the response",
@@ -52,4 +52,12 @@ class WebsocketResponse(BaseModel):
         default=False,
         description="Whether the response is complete",
         examples=[True],
+    )
+
+
+class AgentResponseError(AgentChunkResponse):
+    details: dict = Field(
+        ...,
+        description="The details of the error",
+        examples=[{"error": "Error processing query"}],
     )

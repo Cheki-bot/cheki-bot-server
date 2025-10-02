@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,3 +33,21 @@ class TopicSelection(BaseModel):
     user_query: str = ""
     optimized_query: str = ""
     additional_topics: list[Topic] = Field(default_factory=list)
+
+
+class AgentResponseChunk(BaseModel):
+    content: str = Field(
+        ...,
+        description="The content of the response",
+        examples=["Estoy bien, gracias por preguntar"],
+    )
+    type: Literal["text", "error", "info"] = Field(
+        default="info",
+        description="The type of the response",
+        examples=["text"],
+    )
+    done: bool = Field(
+        default=False,
+        description="Whether the response is complete",
+        examples=[True],
+    )
