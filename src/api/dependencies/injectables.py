@@ -7,12 +7,14 @@ from langchain_core.vectorstores import VectorStore
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_nebius import ChatNebius, NebiusEmbeddings
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from pymongo.database import Database as MongoDB
 
 from src import ENV
 from src.agent.agent import AsyncAgent
 from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, AsyncSelectPrompt
 from src.agent.context_manager import ContextManager
 from src.agent.context_managers.mongo_cm import MongoContextManager
+from src.db.mongo import get_mongo_db
 
 
 def get_chat_model():
@@ -53,17 +55,14 @@ def get_topic_selector(chat_model: "ChatModelDep") -> AsyncClassifyTopic:
     return AsyncClassifyTopic(chat_model)
 
 
-def get_mongo_vdb(emb_model: "EmbeddingModelDep") -> VectorStore:
-    vector_db = MongoDBAtlasVectorSearch.from_connection_string(
-        connection_string=ENV.mongo.uri,
-        db_name=ENV.mongo.db_name,
-        collection_name=ENV.mongo.collection_name,
+def get_mongo_vdb(emb_model: "EmbeddingModelDep", db: "MongoDBDep") -> VectorStore:
+    vector_db = MongoDBAtlasVectorSearch(
+        collection=db.get_collection(ENV.mongo.collection_name),
         embedding=emb_model,
         index_name=ENV.mongo.index_name,
         relevance_score_fn="cosine",
-        namespace=f"{ENV.mongo.db_name}.{ENV.mongo.collection_name}",
     )
-    vector_db.create_vector_search_index(ENV.mongo.dimensions, ["type"])
+    vector_db.create_vector_search_index(ENV.mongo.dimensions, ["topic"])
     return vector_db
 
 
@@ -82,8 +81,9 @@ def get_agent(
 
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
 EmbeddingModelDep = Annotated[Embeddings, Depends(get_embedding_model)]
-ContextManagerDep = Annotated[ContextManager, Depends(get_context_manager)]
 ClassifyTopicDep = Annotated[AsyncClassifyTopic, Depends(get_topic_selector)]
+MongoDBDep = Annotated[MongoDB, Depends(get_mongo_db)]
+ContextManagerDep = Annotated[ContextManager, Depends(get_context_manager)]
 RAGRetrieveDep = Annotated[AsyncRAGRetrieve, Depends(get_rag_engine)]
 SelectPromptDep = Annotated[AsyncSelectPrompt, Depends()]
 AgentDep = Annotated[AsyncAgent, Depends(get_agent)]

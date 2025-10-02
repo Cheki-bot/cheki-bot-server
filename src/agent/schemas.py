@@ -15,23 +15,27 @@ class DocType(Enum):
 
 class Topic(str, Enum):
     VERIFICATION_OF_NEWS = "VERIFICATION_OF_NEWS"
-    ELECTORAL_INFORMATION = "ELECTORAL_INFORMATION"
     CANDIDATES = "CANDIDATES"
     GOVERNMENT_PROPOSALS = "GOVERNMENT_PROPOSALS"
     ELECTORAL_CALENDAR = "ELECTORAL_CALENDAR"
     QUESTIONS_AND_ANSWERS = "QUESTIONS_AND_ANSWERS"
-    CAPABILITIES = "CAPABILITIES"
+
     GENERAL_INFO = "GENERAL_INFO"
+
+    CAPABILITIES = "CAPABILITIES"
+
     INSTRUCTIONS = "INSTRUCTIONS"
+
     NOT_FOUND = "NOT_FOUND"
+    
     OTHERS = "OTHERS"
 
 
 class TopicSelection(BaseModel):
     topic: Topic
     description: str
-    user_query: str = ""
-    optimized_query: str = ""
+    user_query: str = Field('')
+    optimized_query: str = Field('')
     additional_topics: list[Topic] = Field(default_factory=list)
 
 
