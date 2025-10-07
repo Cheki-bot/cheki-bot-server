@@ -4,7 +4,7 @@ import pytest
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 
-from src.agent.commands.rag_retrieve import AsyncRAGRetrieve
+from src.agent.commands import AsyncRAGRetrieve
 from src.agent.schemas import Topic, TopicSelection
 
 

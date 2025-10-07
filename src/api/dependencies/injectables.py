@@ -11,10 +11,11 @@ from pymongo.database import Database as MongoDB
 
 from src import ENV
 from src.agent.agent import AsyncAgent
-from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, AsyncSelectPrompt
+from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, BuildNewsVerificatiosPrompt, BuildTopicPrompts
 from src.agent.context_manager import ContextManager
 from src.agent.context_managers.mongo_cm import MongoContextManager
-from src.db.mongo import get_mongo_db
+from src.agent.schemas import Topic
+from src.mongo import get_async_mongo_db
 
 
 def get_chat_model():
@@ -70,20 +71,34 @@ def get_rag_engine(vector_db: Annotated[MongoDBAtlasVectorSearch, Depends(get_mo
     return AsyncRAGRetrieve(vector_db=vector_db)
 
 
+def get_topic_prompt_builder(db: "MongoDBDep"):
+    build_topic_prompts = BuildTopicPrompts(
+        {
+            Topic.VERIFICATION_OF_NEWS.value: BuildNewsVerificatiosPrompt(db),
+        }
+    )
+    return build_topic_prompts
+
+
 def get_agent(
     chat_model: "ChatModelDep",
     classify_topic: "ClassifyTopicDep",
     rag_retrieve: "RAGRetrieveDep",
-    select_prompt: "SelectPromptDep",
+    build_topic_prompts: BuildTopicPrompts,
 ) -> AsyncAgent:
-    return AsyncAgent(chat_model, classify_topic, rag_retrieve, select_prompt)
+    return AsyncAgent(
+        chat_model,
+        classify_topic,
+        rag_retrieve,
+        build_topic_prompts,
+    )
 
 
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
 EmbeddingModelDep = Annotated[Embeddings, Depends(get_embedding_model)]
 ClassifyTopicDep = Annotated[AsyncClassifyTopic, Depends(get_topic_selector)]
-MongoDBDep = Annotated[MongoDB, Depends(get_mongo_db)]
+MongoDBDep = Annotated[MongoDB, Depends(get_async_mongo_db)]
 ContextManagerDep = Annotated[ContextManager, Depends(get_context_manager)]
 RAGRetrieveDep = Annotated[AsyncRAGRetrieve, Depends(get_rag_engine)]
-SelectPromptDep = Annotated[AsyncSelectPrompt, Depends()]
+BuildTopicPromptsDep = Annotated[BuildTopicPrompts, Depends(get_topic_prompt_builder)]
 AgentDep = Annotated[AsyncAgent, Depends(get_agent)]

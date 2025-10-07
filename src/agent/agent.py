@@ -1,10 +1,12 @@
-from typing import Literal, Sequence
+from typing import Sequence
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, AsyncSelectPrompt
-from src.agent.schemas import AgentResponseChunk
+from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, BuildTopicPrompts
+from src.agent.context_managers.prompts import CHAT_RESPONSE_PROMPT
+from src.agent.schemas import AgentResponseChunk, Platform
+from src.core.tools import get_bo_current_datetime_str
 
 
 class AsyncAgent:
@@ -24,7 +26,7 @@ class AsyncAgent:
         chat_model: BaseChatModel,
         classify_topic: AsyncClassifyTopic,
         rag_retrieve: AsyncRAGRetrieve,
-        select_prompt: AsyncSelectPrompt,
+        build_topic_prompts: BuildTopicPrompts,
     ):
         """Initialize the AsyncAgent with a chat model and context manager.
 
@@ -35,9 +37,9 @@ class AsyncAgent:
         self.chat_model = chat_model
         self.classify_topic = classify_topic
         self.rag_retrieve = rag_retrieve
-        self.select_prompt = select_prompt
+        self.build_topic_prompts = build_topic_prompts
 
-    async def stream(self, messages: Sequence[BaseMessage]):
+    async def stream(self, messages: Sequence[BaseMessage], platform: Platform = Platform.WEB):
         """Stream response chunks for a given query and chat history.
 
         This method retrieves relevant context using the context manager,
@@ -53,32 +55,58 @@ class AsyncAgent:
         """
         try:
             yield AgentResponseChunk(content="Analizando consulta ...")
+
             topic_selection = await self.classify_topic(messages)
+
             yield AgentResponseChunk(content="Obteniendo información...")
-            documents = await self.rag_retrieve(topic_selection)
+
+            main_documents = await self.rag_retrieve(
+                topic_name=topic_selection.topic,
+                query=topic_selection.optimized_query,
+                k=10,
+            )
+
+            extra_docs = []
+
+            for additional_topic in set(topic_selection.additional_topics):
+                docs = await self.rag_retrieve(
+                    topic_name=additional_topic,
+                    query=topic_selection.optimized_query,
+                    k=3,
+                )
+                extra_docs.extend(docs)
+
             yield AgentResponseChunk(content="Procesando información...")
-            prompt = await self.select_prompt(topic_selection)
+
+            main_topic_prompts = await self.build_topic_prompts(main_documents)
+            additional_topic_prompts = await self.build_topic_prompts(extra_docs)
+            prompt = CHAT_RESPONSE_PROMPT.format(
+                content=(
+                    f"# Información encontrada\n\n{'\n'.join(main_topic_prompts)}\n\n"
+                    f"# Información adicional\n\n{'\n'.join(additional_topic_prompts)}"
+                ),
+                platform="Markdown" if platform is Platform.WEB else platform.value,
+                date=get_bo_current_datetime_str(),
+            )
+
             yield AgentResponseChunk(content="Generando respuesta...")
-            data = ""
-            for document in documents:
-                data += f"{document.page_content}\n\n"
 
-            system_prompt = prompt.format(data=data)
-            messages = [SystemMessage(content=system_prompt), *messages]
+            context_messages = [
+                SystemMessage(content=prompt),
+                SystemMessage(content=topic_selection.description),
+                HumanMessage(content=topic_selection.user_query),
+            ]
 
-            async for chunk in self.chat_model.astream(messages):
+            async for chunk in self.chat_model.astream(context_messages):
                 yield AgentResponseChunk(content=str(chunk.content), type="text")
 
             yield AgentResponseChunk(content="", type="text", done=True)
 
         except Exception as e:
             yield AgentResponseChunk(content=f"Error: {str(e)}", type="error", done=True)
+            raise e
 
-    async def invoke(
-        self,
-        messages: Sequence[BaseMessage],
-        platform: Literal["telegram", "whatsapp", "web"] = "web",
-    ) -> str:
+    async def invoke(self, messages: Sequence[BaseMessage], platform: Platform = Platform.WEB) -> str:
         """Process a query and generate a response using context-aware reasoning.
 
         Retrieves relevant context based on the query and conversation history,
@@ -86,7 +114,7 @@ class AsyncAgent:
         from the final output to provide clean responses.
 
         Args:
-            query (str): The user's query or question to process
+            query (str): The user's query or question to process.
             history (list[BaseMessage]): Conversation history with previous messages
 
         Returns:
@@ -98,16 +126,38 @@ class AsyncAgent:
             >>> print(response)
             "AI stands for Artificial Intelligence..."
         """
-
         topic_selection = await self.classify_topic(messages)
-        documents = await self.rag_retrieve(topic_selection)
-        prompt = await self.select_prompt(topic_selection)
-        data = ""
-        for document in documents:
-            data += f"{document.page_content}\n\n"
+        main_documents = await self.rag_retrieve(
+            topic_name=topic_selection.topic,
+            query=topic_selection.optimized_query,
+            k=10,
+        )
+        extra_docs = []
 
-        system_prompt = prompt.format(data=data)
-        messages = [SystemMessage(content=system_prompt), *messages]
+        for additional_topic in set(topic_selection.additional_topics):
+            docs = await self.rag_retrieve(
+                topic_name=additional_topic,
+                query=topic_selection.optimized_query,
+                k=3,
+            )
+            extra_docs.extend(docs)
 
-        output = await self.chat_model.ainvoke(messages)
+        main_topic_prompts = await self.build_topic_prompts(main_documents)
+        additional_topic_prompts = await self.build_topic_prompts(extra_docs)
+
+        prompt = CHAT_RESPONSE_PROMPT.format(
+            content=(
+                f"# Información encontrada\n\n{'\n'.join(main_topic_prompts)}\n\n"
+                f"# Información adicional\n\n{'\n'.join(additional_topic_prompts)}"
+            ),
+            platform="Markdown" if platform is Platform.WEB else platform.value,
+            date=get_bo_current_datetime_str(),
+        )
+        context_messages = [
+            SystemMessage(content=prompt),
+            SystemMessage(content=topic_selection.description),
+            HumanMessage(content=topic_selection.user_query),
+        ]
+
+        output = await self.chat_model.ainvoke(context_messages)
         return str(output.content)

@@ -2,21 +2,21 @@
 
 # Import all entities for easy access
 from .calendar_entities import CalendarSignature, ElectoralCalendar, Event
-from .election_entities import Election
+from .election_entities import Election, Status
 from .political_entities import Candidacy, GovernmentItem, GovernmentProgram, PoliticalParty, Politician
-from .verification_entities import NewsClassification, NewsTag, NewsVerification
+from .verification_entities import NewsTag, NewsVerification
 
 __all__ = [
-    "PoliticalParty",
-    "Politician",
+    "CalendarSignature",
+    "Candidacy",
+    "Election",
+    "ElectoralCalendar",
+    "Event",
     "GovernmentItem",
     "GovernmentProgram",
-    "Candidacy",
-    "CalendarSignature",
-    "Event",
-    "ElectoralCalendar",
-    "Election",
-    "NewsClassification",
     "NewsTag",
-    "NewsVerification"
+    "NewsVerification",
+    "PoliticalParty",
+    "Politician",
+    "Status",
 ]

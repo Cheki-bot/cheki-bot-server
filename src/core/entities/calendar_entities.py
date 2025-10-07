@@ -1,17 +1,16 @@
 # Calendar Entities
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
+from pydantic import BaseModel
 
-@dataclass
-class CalendarSignature:
+
+class CalendarSignature(BaseModel):
     full_name: str
     possition: str
 
 
-@dataclass
-class Event:
+class Event(BaseModel):
     scenery: str
     no: int
     activity: str
@@ -23,13 +22,11 @@ class Event:
     place: str
 
 
-@dataclass
-class ElectoralCalendar:
-    id: int
+class ElectoralCalendar(BaseModel):
     filename: str
     title: str
     resolution: str
     date: datetime
     introduction: Optional[str] = None
-    signatures: List[CalendarSignature] = field(default_factory=list)
-    events: List[Event] = field(default_factory=list)
+    signatures: List[CalendarSignature] = []
+    events: List[Event] = []

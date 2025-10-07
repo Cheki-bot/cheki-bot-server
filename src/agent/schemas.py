@@ -19,23 +19,24 @@ class Topic(str, Enum):
     GOVERNMENT_PROPOSALS = "GOVERNMENT_PROPOSALS"
     ELECTORAL_CALENDAR = "ELECTORAL_CALENDAR"
     QUESTIONS_AND_ANSWERS = "QUESTIONS_AND_ANSWERS"
-
-    GENERAL_INFO = "GENERAL_INFO"
-
     CAPABILITIES = "CAPABILITIES"
-
+    GENERAL_INFO = "GENERAL_INFO"
     INSTRUCTIONS = "INSTRUCTIONS"
-
     NOT_FOUND = "NOT_FOUND"
-    
     OTHERS = "OTHERS"
+
+
+class Platform(str, Enum):
+    WEB = "web"
+    TELEGRAM = "Telegram"
+    WHATSAPP = "Whatsapp"
 
 
 class TopicSelection(BaseModel):
     topic: Topic
     description: str
-    user_query: str = Field('')
-    optimized_query: str = Field('')
+    user_query: str = Field("")
+    optimized_query: str = Field("")
     additional_topics: list[Topic] = Field(default_factory=list)
 
 

@@ -22,6 +22,7 @@ dependencies = [
     "pymongo>=4.15.1",
     "pytest-asyncio>=1.1.0",
     "python-telegram-bot>=21.0.1",
+    "pytz>=2025.2",
     "tiktoken>=0.11.0",
 ]
 

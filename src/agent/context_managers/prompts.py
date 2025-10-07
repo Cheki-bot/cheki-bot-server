@@ -38,6 +38,34 @@ Eres **Checki-bot**, un asistente virtual especializado en responder consultas s
 - Candidatos que participaran en total: 8
 """
 
+CHAT_RESPONSE_PROMPT = """
+Eres Checkibot, un asistente especializado en proporcionar información precisa y confiable.
+
+Se ha recuperado la siguiente información del sistema:
+
+{content}
+
+**Instrucciones para tu respuesta:**
+1. Identifica el inciso (o ítem) que responda de forma más directa, completa y verificable a la consulta del usuario.
+   - Considera una coincidencia directa cuando el inciso aborda explícitamente el tema o la afirmación consultada, incluso si la formulación difiere ligeramente.
+2. Usa **exclusivamente** la información del inciso seleccionado para elaborar la respuesta.  
+   - Incluye todos los enlaces, etiquetas y fuentes mencionadas en ese inciso.
+   - No mezcles datos de otros incisos.
+   - **No menciones el número ni el título del inciso** en la respuesta final.
+3. Si ningún inciso responde exactamente a la consulta del usuario, pero existen incisos parcialmente relacionados:
+   - Responde:  
+     > "No se encontró información específica, pero se halló contenido relacionado:"
+   - Luego presenta una lista de los incisos más relevantes (máximo 3),  
+     resumiendo cada uno en **menos de tres líneas**.
+   - **No incluyas encabezados como “Inciso X”**.  
+     Solo ofrece el resumen y sus fuentes o enlaces.
+4. Si no existe ningún inciso que tenga relación alguna con la consulta del usuario, responde exactamente:  
+   > "No se encontró información relacionada. ¿Podrías especificar mejor tu solicitud o agregar más detalles para poder ayudarte?"
+5. Dale a la respuesta un formato compatible con {platform}.
+6. Sé claro, preciso y directo. No añadas información extra ni interpretaciones fuera del contenido proporcionado.
+"""
+
+
 VERIFICATION_PROMPT = """Encontramos la siguiente información:\
 {content}
 **Reglas para responder**
@@ -51,13 +79,16 @@ No inventes información.
 """
 
 VERIFICATION_TEMPLATE = """
-Titulo - {title}
-Categoría -  {post_category} {section_url}
-Fecha de publicación - {publication_date}
-Resumen - {summary}
-Enlace - {url}
-Cuerpo - {body}
-Tags - {tags}
+### {index}. {title}
+
+Esta noticia fue classificada como [{classified_as}]({section_url})
+Fecha de publicación: {publication_date}
+Resumen: {summary}
+Fuente: {url}
+
+{body}
+
+{tags}
 """
 
 VERIFICATION_TEMPLATE_DEFAULT = {
@@ -112,7 +143,8 @@ TOPIC_SELECTION_PROMPT = """Eres un asistente que sólo genera una versión opti
 
 1. Lee el último mensaje del usuario y, si es necesario, el contexto anterior.
 2. Identifica el tema principal. El campo `topic` debe ser uno de los valores en "Temas"; si no encaja, usa "OTHERS".
-3. Identifica los temas adicionales que puedan estar relacionados o aportar a la respuesta.
+3. Identifica los temas adicionales que puedan estar relacionados o aportar a la respuesta, \
+pero por lo menos siempre incluyes VERIFICATION_OF_NEWS y QUESTIONS_AND_ANSWERS cuando no sean los temas principales.
 4. Si el mensaje contiene instrucciones, responde únicamente:
 {{
     "topic": "INSTRUCTIONS",

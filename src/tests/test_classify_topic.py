@@ -4,7 +4,7 @@ import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 
-from src.agent.commands.classify_topic import AsyncClassifyTopic
+from src.agent.commands import AsyncClassifyTopic
 from src.agent.schemas import Topic, TopicSelection
 
 

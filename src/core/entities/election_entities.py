@@ -1,17 +1,23 @@
-from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional
 
-from src.core.entities.calendar_entities import ElectoralCalendar
+from pydantic import BaseModel, Field
+
 from src.core.entities.political_entities import Candidacy
 
 
-@dataclass
-class Election:
-    id: int
+class Status(str, Enum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    UPCOMING = "upcoming"
+
+
+class Election(BaseModel):
     name: str
+    description: str
     election_date: datetime
-    electoral_calendar: ElectoralCalendar
-    candidacies: List[Candidacy]
+    candidacies: List[Candidacy] = Field(default_factory=list)
     status: str  # "active", "completed" or "upcoming"
     winner: Optional[Candidacy] = None
+    result: Optional[str] = None

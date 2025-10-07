@@ -15,8 +15,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 from telegram import Bot
 
+from src.agent.schemas import AgentResponseChunk
 from src.api.dependencies import AgentDep
-from src.api.schemas import AgentChunkResponse, QueryRequest
+from src.api.schemas import QueryRequest
 
 
 def limpiar_markdown(texto: str) -> str:
@@ -62,12 +63,12 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
 
     except ValidationError as e:
         # TODO: Standardize error responses
-        res = AgentChunkResponse(content=f"{json.dumps(e.json())}", type="error", done=True)
+        res = AgentResponseChunk(content=f"{json.dumps(e.json())}", type="error", done=True)
         await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1008)
 
     except JSONDecodeError as e:
-        res = AgentChunkResponse(content=f"ERROR de decodificación JSON: {e}", type="error", done=True)
+        res = AgentResponseChunk(content=f"ERROR de decodificación JSON: {e}", type="error", done=True)
         await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1003)
 
@@ -75,7 +76,7 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         await websocket.close()
 
     except Exception as e:
-        res = AgentChunkResponse(content=f"ERROR inesperado: {str(e)}", type="error", done=True)
+        res = AgentResponseChunk(content=f"ERROR inesperado: {str(e)}", type="error", done=True)
         await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1011)
 
