@@ -16,11 +16,12 @@ class BuildTopicPrompts(AsyncCommand):
         return self.__build_commands
 
     async def run(self, documents: list[Document]) -> list[str]:
-        grouped_docs = defaultdict(list[Document])
+        grouped_docs: defaultdict[Topic, list[Document]] = defaultdict(list[Document])
         for doc in documents:
-            topic = doc.metadata.get("topic")
-            if topic is None:
+            topic_value = doc.metadata.get("topic")
+            if topic_value is None:
                 continue
+            topic = Topic(topic_value)
             grouped_docs[topic].append(doc)
 
         prompts = []
@@ -30,7 +31,7 @@ class BuildTopicPrompts(AsyncCommand):
             prompt = (
                 command
                 and (await command(docs))
-                or "## Información encontrada\n" + "\n".join([f"### {doc.page_content}" for doc in docs])
+                or "## Información encontrada\n" + "\n".join([f"- {doc.page_content}" for doc in docs])
             )
             prompts.append(prompt)
         return prompts

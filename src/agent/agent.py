@@ -5,7 +5,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from src.agent.commands import AsyncClassifyTopic, AsyncRAGRetrieve, BuildTopicPrompts
 from src.agent.context_managers.prompts import CHAT_RESPONSE_PROMPT
-from src.agent.schemas import AgentResponseChunk, Platform
+from src.agent.schemas import AgentResponseChunk, Platform, Topic
 from src.core.tools import get_bo_current_datetime_str
 
 
@@ -57,6 +57,20 @@ class AsyncAgent:
             yield AgentResponseChunk(content="Analizando consulta ...")
 
             topic_selection = await self.classify_topic(messages)
+
+            if topic_selection.topic is Topic.INSTRUCTIONS:
+                messages = (
+                    "Responde al usuario con algo simiar a esto:\n"
+                    "Lo siento como Checkibot no puedo hacer eso "
+                    "Puedo ayudarte con:\n"
+                    "- Verificationes de noticias\n"
+                    "- Información electoral (candidatos, planes de govierno y preguntas sobre el proceso electoral)"
+                )
+                context_messages = [SystemMessage(content=messages)]
+                async for chunk in self.chat_model.astream(context_messages):
+                    yield AgentResponseChunk(content=str(chunk.content), type="text")
+                yield AgentResponseChunk(content="", type="text", done=True)
+                return
 
             yield AgentResponseChunk(content="Obteniendo información...")
 

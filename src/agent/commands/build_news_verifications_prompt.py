@@ -21,8 +21,6 @@ class BuildNewsVerificatiosPrompt(BuildTopicPrompt):
 
         ids = {ObjectId(doc.metadata.get("data_id")) for doc in documents if doc.metadata.get("data_id") is not None}
 
-        print(ids)
-
         articles = TypeAdapter(list[NewsVerificationModel]).validate_python(
             collection.find({"_id": {"$in": list(ids)}})
         )
@@ -31,7 +29,6 @@ class BuildNewsVerificatiosPrompt(BuildTopicPrompt):
 
         for index, article in enumerate(articles):
             text = VERIFICATION_TEMPLATE.format(
-                index=index + 1,
                 title=article.title,
                 classified_as=article.classified_as,
                 section_url=article.section_url,

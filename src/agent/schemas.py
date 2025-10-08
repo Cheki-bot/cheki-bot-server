@@ -22,8 +22,6 @@ class Topic(str, Enum):
     CAPABILITIES = "CAPABILITIES"
     GENERAL_INFO = "GENERAL_INFO"
     INSTRUCTIONS = "INSTRUCTIONS"
-    NOT_FOUND = "NOT_FOUND"
-    OTHERS = "OTHERS"
 
 
 class Platform(str, Enum):

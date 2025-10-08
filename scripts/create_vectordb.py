@@ -13,7 +13,7 @@ from pydantic import TypeAdapter
 from src.agent.schemas import Topic
 from src.core.tools import sanitize_text_input
 from src.mongo import get_mongo_db
-from src.mongo.models import NewsVerificationModel
+from src.mongo.models import CandidacyModel, ElectionModel, NewsVerificationModel
 from src.settings import Settings
 
 settings = Settings(_env_file=".env")
@@ -165,27 +165,33 @@ Referencia - {reference}
 
 
 def load_candidates():
-    with open(file_path, "r") as f:
-        database = json.load(f)
-    candidates: list = database["candidates"]
-    candidates_list = ""
-    candidates_list_with_summary = ""
-    splitted_documents: list[Document] = []
-    for candidate in candidates:
-        candidates_list += f"- {candidate['candidate'].strip()}\n"
-        candidates_list_with_summary += f"- {candidate['candidate'].strip()}\n\t{candidate['summary']}\n\n"
-    candidates_list = candidates_list.strip()
-    document = Document(
-        "quienes estan postulantes, lista de candidatos a las elecciones, portulantes a las elecciones, lista de candidatos con detalles, cuales son los candidatos",
-        metadata={
-            "topic": Topic.CANDIDATES.value,
-            "candidates": candidates_list,
-            "summaries": candidates_list_with_summary,
-        },
-    )
-    splitted_documents.append(document)
+    db = get_mongo_db()
+    can_coll = db.get_collection("candidacies")
+    ele_call = db.get_collection("elections")
+    cursor = can_coll.find({})
+    candidates: list[CandidacyModel] = TypeAdapter(list[CandidacyModel]).validate_python(cursor)
+    cursor = ele_call.find({})
+    elections = TypeAdapter(list[ElectionModel]).validate_python(cursor)
 
-    return splitted_documents
+    base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDATES.value}
+
+    all_documents = []
+    for election in elections:
+        document = Document(
+            sanitize_text_input(f"candidatos en las {election.name}"),
+            metadata=base_metadata,
+        )
+
+        all_documents.append(document)
+
+    for candidacy in candidates:
+        content = f"partido {candidacy.party.name} ({candidacy.party.sigla}) "
+        for politician in candidacy.candidates:
+            content += f"{politician.full_name} como {politician.position} "
+        content = sanitize_text_input(content)
+        all_documents.append(Document(content, metadata=base_metadata))
+
+    return all_documents
 
 
 def load_questions_and_answers():
@@ -194,9 +200,16 @@ def load_questions_and_answers():
 
     def parse(document: Document):
         content: dict = json.loads(document.page_content)
-        question = content["question"].strip().lower()
-        answer = content["answer"]
-        return Document(page_content=question, metadata={"topic": Topic.QUESTIONS_AND_ANSWERS.value, "answer": answer})
+        question = content["question"].strip()
+        answer = content["answer"].strip()
+        return Document(
+            page_content=sanitize_text_input(question),
+            metadata={
+                "topic": Topic.QUESTIONS_AND_ANSWERS.value,
+                "question": question,
+                "answer": answer,
+            },
+        )
 
     return [parse(doc) for doc in documents]
 

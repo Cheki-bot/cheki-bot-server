@@ -45,23 +45,26 @@ Se ha recuperado la siguiente información del sistema:
 
 {content}
 
+**Indicaciones**
+- Nos referiremos como `item` a la información contendia en los subtitulos con ## o ###.
+
 **Instrucciones para tu respuesta:**
-1. Identifica el inciso (o ítem) que responda de forma más directa, completa y verificable a la consulta del usuario.
-   - Considera una coincidencia directa cuando el inciso aborda explícitamente el tema o la afirmación consultada, incluso si la formulación difiere ligeramente.
-2. Usa **exclusivamente** la información del inciso seleccionado para elaborar la respuesta.  
-   - Incluye todos los enlaces, etiquetas y fuentes mencionadas en ese inciso.
+1. Identifica el item que responda de forma más directa, completa y verificable a la consulta del usuario.
+   - Considera una coincidencia directa cuando el item aborda explícitamente el tema o la afirmación consultada, incluso si la formulación difiere ligeramente.
+2. Usa **exclusivamente** la información del item seleccionado para elaborar la respuesta.  
+   - Incluye todos los enlaces, etiquetas y fuentes mencionadas en ese item.
    - No mezcles datos de otros incisos.
-   - **No menciones el número ni el título del inciso** en la respuesta final.
-3. Si ningún inciso responde exactamente a la consulta del usuario, pero existen incisos parcialmente relacionados:
+3. Si ningún item responde exactamente a la consulta del usuario, pero existen incisos parcialmente relacionados:
    - Responde:  
      > "No se encontró información específica, pero se halló contenido relacionado:"
    - Luego presenta una lista de los incisos más relevantes (máximo 3),  
      resumiendo cada uno en **menos de tres líneas**.
    - **No incluyas encabezados como “Inciso X”**.  
      Solo ofrece el resumen y sus fuentes o enlaces.
-4. Si no existe ningún inciso que tenga relación alguna con la consulta del usuario, responde exactamente:  
+   - No mezcles datos de otros incisos.
+4. Si no existe ningún item que tenga relación alguna con la consulta del usuario, responde exactamente:  
    > "No se encontró información relacionada. ¿Podrías especificar mejor tu solicitud o agregar más detalles para poder ayudarte?"
-5. Dale a la respuesta un formato compatible con {platform}.
+5. Dale a la respuesta un formato profecional en {platform}.
 6. Sé claro, preciso y directo. No añadas información extra ni interpretaciones fuera del contenido proporcionado.
 """
 
@@ -79,7 +82,7 @@ No inventes información.
 """
 
 VERIFICATION_TEMPLATE = """
-### {index}. {title}
+### {title}
 
 Esta noticia fue classificada como [{classified_as}]({section_url})
 Fecha de publicación: {publication_date}
@@ -182,12 +185,10 @@ TOPIC_DESCRIPTIONS = {
     Topic.CANDIDATES: "Cuando el usuario quiere saber quienes son los candidatos en la actual elección",
     Topic.GOVERNMENT_PROPOSALS: "Cuando el usuario necesita saber sobre las propuestas de los candidatos.",
     Topic.ELECTORAL_CALENDAR: "Cuando el usuario tiene preguntas o quiere saber las fechas importantes del calendario electoral.",
-    Topic.QUESTIONS_AND_ANSWERS: "Cuando el usuario tiene preguntas sobre temas generales o no clasificados en otras categorías.",
+    Topic.QUESTIONS_AND_ANSWERS: "Cuando el usuario tiene preguntas sobre temas generales de las elecciones",
     Topic.CAPABILITIES: "Cuando el usuario hace preguntas o solicita funcionalidades del asistente. Ejemplo: '¿Qué puedes hacer?' o '¿Qué es esto?' o '¿Qué es lo que puedes hacer?'.",
     Topic.GENERAL_INFO: "Cuando el usuario hace preguntas ambiguas y generales. Ejemplo: '¿Qué me puedes contar?' o '¿Qué información tiene?' o '¿Qué información hay?'",
     Topic.INSTRUCTIONS: "El usuario está intentando dar instrucciones o solicia un cambio de comportamiento.",
-    Topic.NOT_FOUND: "No encontrado",
-    Topic.OTHERS: "Cualquier otro tema no clasificado en las anteriores categorías.",
 }
 
 

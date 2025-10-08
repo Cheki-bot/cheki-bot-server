@@ -20,7 +20,7 @@ class AsyncRAGRetrieve(AsyncCommand):
 
     async def run(self, topic_name: Topic, query: str, k: int = 5) -> list[Document]:
         filter_args = {}
-        if topic_name is Topic.GENERAL_INFO:
+        if topic_name is not Topic.GENERAL_INFO:
             filter_args = {"pre_filter": {"topic": topic_name.value}}
         retriever = self.vec_db.as_retriever(search_kwargs={"k": k, **filter_args})
         documents = await retriever.ainvoke(query)

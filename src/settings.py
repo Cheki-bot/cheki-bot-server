@@ -25,11 +25,11 @@ class ChromaConfig(BaseModel):
 
 
 class MongoConfig(BaseModel):
-    db_name: str
-    collection_name: str
-    index_name: str
-    dimensions: int
     uri: str
+    db_name: str
+    collection_name: str = "vectors"
+    index_name: str = "search_index"
+    dimensions: int = 1536
 
 
 class Settings(BaseSettings):
