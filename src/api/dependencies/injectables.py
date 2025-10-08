@@ -56,7 +56,7 @@ def get_embedding_model():
 def get_topic_selector() -> AsyncClassifyTopic:
     return AsyncClassifyTopic(
         model=ChatOpenAI(
-            model="gpt-5-nano",
+            model="gpt-4.1-nano",
             temperature=0.1,
             api_key=ENV.llm.api_key,
         )
@@ -96,7 +96,7 @@ def get_agent(
     chat_model: "ChatModelDep",
     classify_topic: "ClassifyTopicDep",
     rag_retrieve: "RAGRetrieveDep",
-    build_topic_prompts: BuildTopicPrompts,
+    build_topic_prompts: "BuildTopicPromptsDep",
 ) -> AsyncAgent:
     return AsyncAgent(
         chat_model,
