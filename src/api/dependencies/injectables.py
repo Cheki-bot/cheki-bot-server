@@ -56,7 +56,7 @@ def get_embedding_model():
 def get_topic_selector() -> AsyncClassifyTopic:
     return AsyncClassifyTopic(
         model=ChatOpenAI(
-            model="gpt-5-nano",
+            model="gpt-4.1-nano",
             temperature=0.1,
             api_key=ENV.llm.api_key,
         )
