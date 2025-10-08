@@ -49,20 +49,19 @@ Se ha recuperado la siguiente información del sistema:
 - Nos referiremos como `item` a la información contendia en los subtitulos con ## o ###.
 
 **Instrucciones para tu respuesta:**
-1. Identifica el item que responda de forma más directa, completa y verificable a la consulta del usuario.
-   - Considera una coincidencia directa cuando el item aborda explícitamente el tema o la afirmación consultada, incluso si la formulación difiere ligeramente.
+1. Identifica el item con mayor relevancia a la consulta del usuario.
 2. Usa **exclusivamente** la información del item seleccionado para elaborar la respuesta.  
    - Incluye todos los enlaces, etiquetas y fuentes mencionadas en ese item.
-   - No mezcles datos de otros incisos.
-3. Si ningún item responde exactamente a la consulta del usuario, pero existen incisos parcialmente relacionados:
-   - Responde:  
-     > "No se encontró información específica, pero se halló contenido relacionado:"
-   - Luego presenta una lista de los incisos más relevantes (máximo 3),  
+   - No mezcles datos de otros items.
+3. Si ningún item responde exactamente a la consulta del usuario, pero existen items parcialmente relacionados:
+   - Utiliza toda la información (# Información encontrada o # Información adicional) 
+   - Presenta una lista de los items más relevantes (máximo 3),
      resumiendo cada uno en **menos de tres líneas**.
    - **No incluyas encabezados como “Inciso X”**.  
      Solo ofrece el resumen y sus fuentes o enlaces.
-   - No mezcles datos de otros incisos.
-4. Si no existe ningún item que tenga relación alguna con la consulta del usuario, responde exactamente:  
+   - No mezcles datos de otros items.
+   - Presenta esta información como lo mas relacionado que se encontró.
+4. Si no existe ningún item que tenga relación alguna con la consulta del usuario:  
    > "No se encontró información relacionada. ¿Podrías especificar mejor tu solicitud o agregar más detalles para poder ayudarte?"
 5. Dale a la respuesta un formato profecional en {platform}.
 6. Sé claro, preciso y directo. No añadas información extra ni interpretaciones fuera del contenido proporcionado.
@@ -164,7 +163,7 @@ Eres un asistente que genera una versión optimizada y estructurada en JSON de l
 6. En los demás casos, devuelve el siguiente formato:
 {{
     "topic": "<tema identificado>",
-    "description": "<breve descripción del tema detectado y lo que el usuario quiere hacer>",
+    "description": "<breve descripción del tema detectado y lo que el usuario quiere saber>",
     "user_query": "<texto original>",
     "optimized_query": "<consulta clara y concisa (máx. 10-12 palabras, todo en minúsculas)>",
     "additional_topics": ["<primer tema adicional>", "<segundo tema adicional>"]
@@ -184,14 +183,14 @@ Temas:
 
 
 TOPIC_DESCRIPTIONS = {
-    Topic.VERIFICATION_OF_NEWS: "Cuando el usuario pregunta sobre noticias o información, y se requiere verificar la veracidad de dicha información.",
-    Topic.CANDIDATES: "Cuando el usuario quiere saber quienes son los candidatos en la actual elección",
-    Topic.GOVERNMENT_PROPOSALS: "Cuando el usuario necesita saber sobre las propuestas de los candidatos.",
-    Topic.ELECTORAL_CALENDAR: "Cuando el usuario tiene preguntas o quiere saber las fechas importantes del calendario electoral.",
-    Topic.QUESTIONS_AND_ANSWERS: "Cuando el usuario tiene preguntas sobre temas generales de las elecciones",
-    Topic.CAPABILITIES: "Cuando el usuario hace preguntas o solicita funcionalidades del asistente o simplemente cuando salude. Ejemplo: '¿Qué puedes hacer?' o '¿Qué es esto?' o '¿Qué es lo que puedes hacer?'.",
-    Topic.GENERAL_INFO: "Cuando el usuario hace preguntas ambiguas y generales. Ejemplo: '¿Qué me puedes contar?' o '¿Qué información tiene?' o '¿Qué información hay?'",
-    Topic.INSTRUCTIONS: "El usuario está intentando dar instrucciones o solicia un cambio de comportamiento.",
+    Topic.VERIFICATION_OF_NEWS: "Cuando el usuario consulta sobre la veracidad de una noticia, declaración o información pública, y desea saber si es verdadera, falsa o engañosa.",
+    Topic.CANDIDATES: "Cuando el usuario pregunta por los candidatos (nombres o partidos politicos) que participan en las elecciones actuales o busca información sobre ellos.",
+    Topic.GOVERNMENT_PROPOSALS: "Cuando el usuario solicita conocer o comparar las propuestas, planes o programas de los candidatos o partidos políticos.",
+    Topic.ELECTORAL_CALENDAR: "Cuando el usuario pregunta por fechas, plazos o eventos importantes del proceso electoral.",
+    Topic.QUESTIONS_AND_ANSWERS: "Cuando el usuario realiza preguntas generales sobre el proceso electoral, sus reglas, instituciones o funcionamiento.",
+    Topic.CAPABILITIES: "Cuando el usuario saluda o pregunta por las funciones, capacidades o propósito del asistente. Ejemplo: '¿Qué puedes hacer?' o '¿Cómo funcionas?'.",
+    Topic.GENERAL_INFO: "Cuando la consulta es ambigua, amplia o sin un contexto claro. Ejemplo: '¿Qué información tienes?' o '¿Qué puedes contarme?'.",
+    Topic.INSTRUCTIONS: "Cuando el usuario da órdenes, solicita ajustes en el comportamiento o pide modificar la forma en que el asistente responde.",
 }
 
 
