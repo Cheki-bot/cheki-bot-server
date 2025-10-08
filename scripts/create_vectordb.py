@@ -1,28 +1,34 @@
 import json
-import os
 import re
 
 import tiktoken
+from bson import ObjectId
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
 from langchain_community.document_loaders import JSONLoader
 from langchain_core.documents import Document
+from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
+from pydantic import TypeAdapter
 
-from src.consts import DocType
+from src.agent.schemas import Topic
+from src.core.tools import sanitize_text_input
+from src.mongo import get_mongo_db
+from src.mongo.models import CandidacyModel, ElectionModel, NewsVerificationModel
 from src.settings import Settings
 
 settings = Settings(_env_file=".env")
 
 folder = "base_file"
 file_path = f"{folder}/{settings.google.data_filename}"
+
 embedding = OpenAIEmbeddings(
     model=settings.llm.emb_model,
     api_key=settings.llm.api_key,
 )
+
 encoding = tiktoken.encoding_for_model("text-embedding-3-small")
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=150,
+    chunk_size=100,
     chunk_overlap=20,
     length_function=lambda text: len(encoding.encode(text)),
     separators=["\n\n", "\n", ". ", " ", ""],
@@ -35,32 +41,29 @@ def clean_text(text: str) -> str:
 
 
 def load_verifications():
-    print("Cargando verificaciones...")
-    loader = JSONLoader(
-        file_path=file_path,
-        jq_schema=".verifications[]",
-        text_content=False,
-    )
-    documents = loader.load()
-    splitted_documents = []
-    for document in documents:
-        page_content = json.loads(document.page_content)
-        chunks = splitter.split_text(page_content["body"])
-        for chunk in chunks:
-            metadata = {
-                **page_content,
-                "tags": " ".join(page_content["tags"]),
-                "type": DocType.VERIFICATIONS.value,
-            }
-            del metadata["body"]
-            splitted_document = Document(page_content=clean_text(chunk), metadata=metadata)
-            splitted_documents.append(splitted_document)
-    print(f"Verificaciones cargadas: {len(splitted_documents)} documentos")
-    return splitted_documents
+    db = get_mongo_db()
+    collection = db.get_collection("news_verifications")
+
+    verifications = TypeAdapter(list[NewsVerificationModel]).validate_python(collection.find().to_list())
+
+    base_metadata = {"collection_name": "news_verifications", "topic": Topic.VERIFICATION_OF_NEWS.value}
+    documents = []
+    for verification in verifications:
+        metadata = {"data_id": ObjectId(str(verification.id)), **base_metadata}
+        title = sanitize_text_input(verification.title)
+        body = sanitize_text_input(verification.body)
+        summary = sanitize_text_input(verification.summary)
+        news_documents = [
+            Document(page_content=title, metadata=metadata),
+            Document(page_content=body, metadata=metadata),
+            Document(page_content=summary, metadata=metadata),
+        ]
+        documents.extend(news_documents)
+    db.client.close()
+    return splitter.split_documents(documents)
 
 
 def load_government_programs():
-    print("Cargando programas gubernamentales...")
     loader = JSONLoader(
         file_path=file_path,
         jq_schema=".government_programs[]",
@@ -76,7 +79,7 @@ def load_government_programs():
         vice_president = program["vice_president"]
         status = program.get("status")
         if status and status == "no participa":
-            metadata = {"status": status, "type": DocType.GOV_PROGRAMS.value}
+            metadata = {"status": status, "topic": Topic.GOVERNMENT_PROPOSALS.value}
             page_content = f"El partido {party} ({sigla}) binomio {president} y {vice_president} decidieron no participar como candidatos en las elecciones"
             continue
         government_plan = program["government_plan"]
@@ -85,7 +88,7 @@ def load_government_programs():
             summary = str(value.get("summary", ""))
             _ = str(value.get("content", ""))
             num_seq = index + 1
-            metadata = {"num_seq": num_seq, "type": DocType.GOV_PROGRAMS.value}
+            metadata = {"num_seq": num_seq, "topic": Topic.GOVERNMENT_PROPOSALS.value}
 
             chunks = splitter.split_text(summary)
             for chunk in chunks:
@@ -101,12 +104,10 @@ def load_government_programs():
                 splitted_document = Document(page_content=page_content.lower(), metadata=metadata)
                 splitted_documents.append(splitted_document)
 
-    print(f"Programas gubernamentales cargados: {len(splitted_documents)} documentos")
     return splitted_documents
 
 
 def load_calendar_metadata():
-    print("Cargando metadatos del calendario...")
     loader = JSONLoader(
         file_path=file_path,
         jq_schema=".calendar_metadata",
@@ -126,15 +127,14 @@ def load_calendar_metadata():
         splitted_documents.append(
             Document(
                 page_content=content,
-                metadata={"type": DocType.CALENDAR_META.value},
+                metadata={"topic": Topic.ELECTORAL_CALENDAR.value},
             )
         )
-    print(f"Metadatos del calendario cargados: {len(splitted_documents)} documentos")
+
     return splitted_documents
 
 
 def load_calendar():
-    print("Cargando calendario...")
     loader = JSONLoader(
         file_path=file_path,
         jq_schema=".calendar[]",
@@ -158,35 +158,40 @@ Referencia - {reference}
         splitted_documents.append(
             Document(
                 page_content=content,
-                metadata={"type": DocType.CALENDAR.value},
+                metadata={"topic": Topic.ELECTORAL_CALENDAR.value},
             )
         )
-    print(f"Calendario cargado: {len(splitted_documents)} documentos")
     return splitted_documents
 
 
 def load_candidates():
-    with open(file_path, "r") as f:
-        database = json.load(f)
-    candidates: list = database["candidates"]
-    candidates_list = ""
-    candidates_list_with_summary = ""
-    splitted_documents: list[Document] = []
-    for candidate in candidates:
-        candidates_list += f"- {candidate['candidate'].strip()}\n"
-        candidates_list_with_summary += f"- {candidate['candidate'].strip()}\n\t{candidate['summary']}\n\n"
-    candidates_list = candidates_list.strip()
-    document = Document(
-        "quienes estan postulantes, lista de candidatos a las elecciones, portulantes a las elecciones, lista de candidatos con detalles, cuales son los candidatos",
-        metadata={
-            "type": DocType.CANDIDATES.value,
-            "candidates": candidates_list,
-            "summaries": candidates_list_with_summary,
-        },
-    )
-    splitted_documents.append(document)
+    db = get_mongo_db()
+    can_coll = db.get_collection("candidacies")
+    ele_call = db.get_collection("elections")
+    cursor = can_coll.find({})
+    candidates: list[CandidacyModel] = TypeAdapter(list[CandidacyModel]).validate_python(cursor)
+    cursor = ele_call.find({})
+    elections = TypeAdapter(list[ElectionModel]).validate_python(cursor)
 
-    return splitted_documents
+    base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDATES.value}
+
+    all_documents = []
+    for election in elections:
+        document = Document(
+            sanitize_text_input(f"candidatos en las {election.name}"),
+            metadata=base_metadata,
+        )
+
+        all_documents.append(document)
+
+    for candidacy in candidates:
+        content = f"partido {candidacy.party.name} ({candidacy.party.sigla}) "
+        for politician in candidacy.candidates:
+            content += f"{politician.full_name} como {politician.position} "
+        content = sanitize_text_input(content)
+        all_documents.append(Document(content, metadata=base_metadata))
+
+    return all_documents
 
 
 def load_questions_and_answers():
@@ -195,20 +200,41 @@ def load_questions_and_answers():
 
     def parse(document: Document):
         content: dict = json.loads(document.page_content)
-        question = content["question"].strip().lower()
-        answer = content["answer"]
-        return Document(page_content=question, metadata={"type": DocType.Q_A.value, "answer": answer})
+        question = content["question"].strip()
+        answer = content["answer"].strip()
+        return Document(
+            page_content=sanitize_text_input(question),
+            metadata={
+                "topic": Topic.QUESTIONS_AND_ANSWERS.value,
+                "question": question,
+                "answer": answer,
+            },
+        )
 
     return [parse(doc) for doc in documents]
 
 
 def create_vectordb():
+    print("cargando verificaciones de noticias ...")
     verifications_docs = load_verifications()
+    print(f"Se cargador {len(verifications_docs)} verificaciones")
+
+    print("cargando programas de gobierno ...")
     government_programs_docs = load_government_programs()
+    print(f"Se cargador {len(government_programs_docs)} programas de gobierno")
+
+    print("cargando calendario de elecciones ...")
     calendar_metadata = load_calendar_metadata()
     calendar_docs = load_calendar()
+    print(f"Se cargador {len(calendar_docs) + len(calendar_metadata)} eventos del calendario")
+
+    print("cargando candidatos ...")
     candidate_docs = load_candidates()
+    print(f"Se cargador {len(candidate_docs)} candidatos")
+
+    print("cargando preguntas y respuestas ...")
     questions_and_answers_docs = load_questions_and_answers()
+    print(f"Se cargador {len(questions_and_answers_docs)} preguntas y respuestas")
 
     all_documents = [
         *verifications_docs,
@@ -218,18 +244,29 @@ def create_vectordb():
         *candidate_docs,
         *questions_and_answers_docs,
     ]
+    print(f"Se cargador un total de {len(all_documents)} documentos en el vector store")
 
-    if os.path.exists(settings.chroma.persist_directory):
-        vectordb = Chroma(
-            persist_directory=settings.chroma.persist_directory,
-            embedding_function=embedding,
-        )
-        vectordb.delete_collection()
-    vectordb = Chroma.from_documents(
-        documents=all_documents,
+    vectordb = MongoDBAtlasVectorSearch.from_connection_string(
+        connection_string=settings.mongo.uri,
+        db_name=settings.mongo.db_name,
+        collection_name=settings.mongo.collection_name,
         embedding=embedding,
-        persist_directory=settings.chroma.persist_directory,
+        index_name=settings.mongo.index_name,
+        relevance_score_fn="cosine",
+        namespace=f"{settings.mongo.db_name}.{settings.mongo.collection_name}",
     )
 
-    print(f"Base de datos vectorial creada y persistida en: {settings.chroma.persist_directory}")
+    for idx in vectordb.collection.list_search_indexes():
+        if idx["name"] == settings.mongo.index_name:
+            vectordb.collection.drop_search_index(settings.mongo.index_name)
+            print(f"Index {settings.mongo.index_name} dropped")
+            break
+    else:
+        print(f"Creating index {settings.mongo.index_name}")
+        vectordb.create_vector_search_index(settings.mongo.dimensions, ["type", "collection_name", "topic", "data_id"])
+
+    vectordb.collection.delete_many({})
+    vectordb.add_documents(documents=all_documents)
+
+    print("Base de datos vectorial creada y persistida")
     return vectordb

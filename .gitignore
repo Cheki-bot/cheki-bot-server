@@ -19,3 +19,4 @@ sqlite3/*.db
 sqlite3/*.sqlite
 sqlite3/*.journal
 sqlite3/*.lock
+draff/

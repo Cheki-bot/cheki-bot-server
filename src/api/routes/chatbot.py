@@ -1,30 +1,30 @@
+import json
 import os
 import re
-import json
 import traceback
-from telegram import Bot
 from json import JSONDecodeError
-from typing import Annotated, Any, Dict
+from typing import Any, Dict
 
 from fastapi import (
     APIRouter,
-    Depends,
     HTTPException,
     WebSocket,
     WebSocketDisconnect,
 )
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
+from telegram import Bot
 
-from src.api.deps import get_agent
-from src.api.models import QueryRequest
-from src.core.agent import Agent
+from src.agent.schemas import AgentResponseChunk
+from src.api.dependencies import AgentDep
+from src.api.schemas import QueryRequest
+
 
 def limpiar_markdown(texto: str) -> str:
-    texto = re.sub(r'(\*\*|__|\*|_)', '', texto)
-    texto = re.sub(r'#+\s', '', texto)
-    texto = re.sub(r'^\s*[\*\-]\s*|\d+\.\s*', '', texto, flags=re.MULTILINE)
-    texto = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', texto)
+    texto = re.sub(r"(\*\*|__|\*|_)", "", texto)
+    texto = re.sub(r"#+\s", "", texto)
+    texto = re.sub(r"^\s*[\*\-]\s*|\d+\.\s*", "", texto, flags=re.MULTILINE)
+    texto = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", texto)
     return texto.strip()
 
 
@@ -32,16 +32,13 @@ chatbot_router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
 
 @chatbot_router.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    agent: Annotated[Agent, Depends(get_agent)],
-):
+async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
     """
     Handles WebSocket connections for real-time chatbot interaction.
 
     Args:
         websocket (WebSocket): The WebSocket connection.
-        agent (Agent): The chatbot agent dependency.
+        agent (AsyncAgent): The chatbot agent dependency.
 
     Raises:
         ValidationError: If the received data is not valid.
@@ -55,37 +52,39 @@ async def websocket_endpoint(
 
         query = QueryRequest.model_validate(data)
 
-        messages = [
-            HumanMessage(content=msg.content)
-            if msg.role == "user"
-            else AIMessage(content=msg.content)
+        messages = [HumanMessage(content=query.content)] + [
+            HumanMessage(content=msg.content) if msg.role == "user" else AIMessage(content=msg.content)
             for msg in query.history
         ]
 
-        async for token in agent.stream(query.content, messages):
-            await websocket.send_text(token)
+        async for token in agent.stream(messages):
+            await websocket.send_text(token.model_dump_json())
         await websocket.close()
 
     except ValidationError as e:
-        await websocket.send_text(f"ERROR de validación: {json.dumps(e.json())}")
+        # TODO: Standardize error responses
+        res = AgentResponseChunk(content=f"{json.dumps(e.json())}", type="error", done=True)
+        await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1008)
 
     except JSONDecodeError as e:
-        await websocket.send_text(f"ERROR de decodificación JSON: {e}")
+        res = AgentResponseChunk(content=f"ERROR de decodificación JSON: {e}", type="error", done=True)
+        await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1003)
 
     except WebSocketDisconnect:
         await websocket.close()
 
     except Exception as e:
-        await websocket.send_text(f"ERROR inesperado: {str(e)}")
+        res = AgentResponseChunk(content=f"ERROR inesperado: {str(e)}", type="error", done=True)
+        await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1011)
 
 
 @chatbot_router.post("/webhook")
 async def telegram_webhook(
     update: Dict[str, Any],
-    agent: Annotated[Agent, Depends(get_agent)],
+    agent: AgentDep,
 ):
     try:
         if not update or "message" not in update or "chat" not in update["message"]:
@@ -98,7 +97,7 @@ async def telegram_webhook(
         if not text:
             return {"status": "ok", "detail": "Mensaje de texto vacío."}
 
-        response_de_la_ia = await agent.invoke(text, [])
+        response_de_la_ia = await agent.invoke([HumanMessage(content=text)])
 
         texto_para_telegram = limpiar_markdown(response_de_la_ia)
 
@@ -114,6 +113,4 @@ async def telegram_webhook(
     except Exception as e:
         print("error")
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Error processing message: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")

@@ -1,16 +1,16 @@
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
+from src.agent.agent import AsyncAgent
 from src.api.app import create_app
-from src.api.deps import get_agent
-from src.core.agent import Agent
+from src.api.dependencies.injectables import get_agent
 
 
-class MockAgent(Agent):
+class MockAgent(AsyncAgent):
     def __init__(self):
         pass
 
-    async def stream(self, query: str, history):
+    async def stream(self, messages):
         if query == "Error":
             raise Exception("Error processing query")
         chunks = ["Hello, ", "AI is ", "answering ", "here!"]

@@ -40,3 +40,8 @@ jobs:
           GOOGLE_FOLDER_ID: 1_Q9n4UFk90a3W...
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHEKIBOT_API: ${{ secrets.CHEKIBOT_API }}
+          MONGO_DB_NAME: "checkibot_db"
+          MONGO_COLLECTION_NAME: "vectors"
+          MONGO_INDEX_NAME: "search_index"
+          MONGO_DIMENSIONS: "1536"
+          MONGO_URI: "mongodb://username:password@localhost:27017/?directConnection=true"

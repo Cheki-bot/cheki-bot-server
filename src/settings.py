@@ -24,6 +24,14 @@ class ChromaConfig(BaseModel):
     persist_directory: str
 
 
+class MongoConfig(BaseModel):
+    uri: str
+    db_name: str
+    collection_name: str = "vectors"
+    index_name: str = "search_index"
+    dimensions: int = 1536
+
+
 class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -32,6 +40,7 @@ class Settings(BaseSettings):
     llm: LLMConfig
     chroma: ChromaConfig
     google: GoogleConfig
+    mongo: MongoConfig
     allow_origins: Annotated[list[str], NoDecode]
     telegram_token: SecretStr
     chekibot_api: str
