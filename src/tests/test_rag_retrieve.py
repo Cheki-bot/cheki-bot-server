@@ -71,9 +71,7 @@ class TestAsyncRAGRetrieve:
         result = await rag_retrieve.run(Topic.GENERAL_INFO, "test query", 5)
 
         # Verify the call was made correctly - no pre_filter for GENERAL_INFO
-        mock_vector_store.as_retriever.assert_called_once_with(
-            search_kwargs={"k": 5}
-        )
+        mock_vector_store.as_retriever.assert_called_once_with(search_kwargs={"k": 5})
         mock_retriever.ainvoke.assert_called_once_with("test query")
         assert result == mock_documents
 
@@ -118,4 +116,3 @@ class TestAsyncRAGRetrieve:
         # Should handle the exception gracefully
         with pytest.raises(Exception):
             await rag_retrieve.run(Topic.VERIFICATION_OF_NEWS, "test query", 5)
-

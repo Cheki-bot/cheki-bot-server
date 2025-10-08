@@ -37,6 +37,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Ejectar comandos necesarios
 RUN python commands.py --download
+RUN python commands.py --fill
 RUN python commands.py --create
 
 # Exponer el puerto de la aplicación

@@ -39,7 +39,6 @@ def agent(mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_to
 @pytest.mark.asyncio
 async def test_stream_success(agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts):
     query = "test query"
-    mock_messages = ["message1", "message2"]
     mock_classify_topic.return_value = MagicMock(
         topic="test_topic", optimized_query=query, additional_topics=[], description="", user_query=query
     )
@@ -60,7 +59,9 @@ async def test_stream_success(agent, mock_chat_model, mock_classify_topic, mock_
 
 
 @pytest.mark.asyncio
-async def test_stream_empty_query(agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts):
+async def test_stream_empty_query(
+    agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts
+):
     query = ""
     mock_classify_topic.return_value = MagicMock(
         topic="test_topic", optimized_query=query, additional_topics=[], description="", user_query=query
@@ -82,7 +83,9 @@ async def test_stream_empty_query(agent, mock_chat_model, mock_classify_topic, m
 
 
 @pytest.mark.asyncio
-async def test_stream_with_special_characters(agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts):
+async def test_stream_with_special_characters(
+    agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts
+):
     query = "test with special chars: !@#$%^&*()"
     mock_classify_topic.return_value = MagicMock(
         topic="test_topic", optimized_query=query, additional_topics=[], description="", user_query=query
@@ -104,7 +107,9 @@ async def test_stream_with_special_characters(agent, mock_chat_model, mock_class
 
 
 @pytest.mark.asyncio
-async def test_stream_handles_empty_history(agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts):
+async def test_stream_handles_empty_history(
+    agent, mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_topic_prompts
+):
     query = "test"
     mock_classify_topic.return_value = MagicMock(
         topic="test_topic", optimized_query=query, additional_topics=[], description="", user_query=query
@@ -137,5 +142,5 @@ async def test_invoke_method(agent, mock_chat_model, mock_classify_topic, mock_r
     mock_chat_model.ainvoke.return_value = MagicMock(content="test response")
 
     result = await agent.invoke([MagicMock()], platform=Platform.WEB)
-    
+
     assert result == "test response"
