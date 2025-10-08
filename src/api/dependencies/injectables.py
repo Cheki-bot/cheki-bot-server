@@ -96,7 +96,7 @@ def get_agent(
     chat_model: "ChatModelDep",
     classify_topic: "ClassifyTopicDep",
     rag_retrieve: "RAGRetrieveDep",
-    build_topic_prompts: BuildTopicPrompts,
+    build_topic_prompts: "BuildTopicPromptsDep",
 ) -> AsyncAgent:
     return AsyncAgent(
         chat_model,
