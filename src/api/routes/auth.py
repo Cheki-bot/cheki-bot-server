@@ -1,4 +1,7 @@
+
+
 from typing import Annotated, Optional
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from pymongo import ReturnDocument
@@ -58,15 +61,43 @@ def register(data: RegisterRequest, db: Annotated[MongoDB, Depends(get_db)]):
     users.insert_one(user_doc)
     return user_doc
 
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES = 60
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginRequest, db: Annotated[MongoDB, Depends(get_db)]):
     users = db.get_collection("users")
     user = users.find_one({"email": data.email.lower()})
-    if not user or not verify_password(data.password, user.get("password_hash", "")):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    token = create_access_token({"sub": user["_id"], "role": user.get("role", "User")}, expires_delta=60 * 24)
-    return TokenResponse(access_token=token)
+    now = datetime.utcnow().replace(tzinfo=timezone.utc)
+    bolivia_offset = timedelta(hours=-4)
+    if user:
+        lockout_until = user.get("lockout_until")
+        if lockout_until and lockout_until.tzinfo is None:
+            lockout_until = lockout_until.replace(tzinfo=timezone.utc)
+        if lockout_until and lockout_until > now:
+            bolivia_time = (lockout_until + bolivia_offset).strftime('%Y-%m-%d %H:%M:%S Bolivia')
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account locked. Try again after {bolivia_time}"
+            )
+        if not verify_password(data.password, user.get("password_hash", "")):
+            attempts = user.get("failed_attempts", 0) + 1
+            update = {"$set": {"failed_attempts": attempts}}
+            if attempts >= MAX_LOGIN_ATTEMPTS:
+                lockout_time = now + timedelta(minutes=LOCKOUT_MINUTES)
+                update["$set"]["lockout_until"] = lockout_time
+            users.update_one({"_id": user["_id"]}, update)
+            if attempts >= MAX_LOGIN_ATTEMPTS:
+                bolivia_time = (lockout_time + bolivia_offset).strftime('%Y-%m-%d %H:%M:%S Bolivia')
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account locked due to too many failed attempts. Try again after {bolivia_time}"
+                )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        users.update_one({"_id": user["_id"]}, {"$set": {"failed_attempts": 0, "lockout_until": None}})
+        token = create_access_token({"sub": user["_id"], "role": user.get("role", "User")}, expires_delta=60 * 24)
+        return TokenResponse(access_token=token)
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 @router.get("/me", response_model=UserResponse)
