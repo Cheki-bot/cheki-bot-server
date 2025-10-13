@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     allow_origins: Annotated[list[str], NoDecode]
     telegram_token: SecretStr
     chekibot_api: str
+    # Auth config
+    admin_email: str
+    admin_password: SecretStr
+    jwt_secret: SecretStr
 
     # model configurations
     model_config = SettingsConfigDict(
