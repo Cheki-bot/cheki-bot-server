@@ -118,6 +118,9 @@ Create a `.env` file based on the provided `.env.example`:
 - `LLM_MAX_TOKENS`: Maximum tokens in LLM responses (default: 1000)
 - `LLM_CONTEXT_LENGTH`: Maximum context length for LLM (default: 32768)
 - `CHROMA_PERSIST_DIRECTORY`: ChromaDB persistence directory (default: chroma_db)
+- `ADMIN_EMAIL`: Default admin email for initial setup (required)
+- `ADMIN_PASSWORD`: Default admin password for initial setup (required)
+- `JWT_SECRET`: Secret key for JWT token generation (required)
 
 ## Running the Application
 
@@ -176,6 +179,135 @@ curl -X GET "ws://localhost:8000/api/chatbot/ws"
 ```bash
 curl http://localhost:8000/health
 ```
+
+## Authentication
+
+The system includes a complete authentication system with JWT tokens and role-based access control.
+
+### User Roles
+
+- **Admin**: Full access to all endpoints, including user management
+- **User**: Basic access to chat endpoints and profile management
+
+### Authentication Endpoints
+
+#### 1. Register a New User
+
+Create a new user account:
+
+```bash
+curl -X POST "http://localhost:8000/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepass123",
+    "full_name": "John Doe",
+    "role": "User"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "user@example.com",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "role": "User",
+  "is_active": true
+}
+```
+
+#### 2. Login
+
+Authenticate and receive a JWT token:
+
+```bash
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepass123"
+  }'
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+#### 3. Get Current User Profile
+
+Retrieve the authenticated user's profile:
+
+```bash
+curl -X GET "http://localhost:8000/api/auth/me" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "id": "user@example.com",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "role": "User",
+  "is_active": true
+}
+```
+
+### Admin Endpoints
+
+The following endpoints require admin privileges:
+
+#### 4. Deactivate a User
+
+Deactivate a user account (admin only):
+
+```bash
+curl -X PATCH "http://localhost:8000/api/auth/users/user@example.com/deactivate" \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+```
+
+#### 5. Activate a User
+
+Reactivate a deactivated user account (admin only):
+
+```bash
+curl -X PATCH "http://localhost:8000/api/auth/users/user@example.com/activate" \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+```
+
+#### 6. Delete a User
+
+Permanently delete a user account (admin only):
+
+```bash
+curl -X DELETE "http://localhost:8000/api/auth/users/user@example.com" \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+```
+
+### Security Features
+
+- **Password Hashing**: Passwords are hashed using bcrypt
+- **JWT Tokens**: Secure token-based authentication with configurable expiration
+- **Login Attempt Lockout**: Accounts are locked for 60 minutes after 5 failed login attempts
+- **Role-Based Access Control**: Admin and User roles with different permissions
+- **Account Activation**: Admins can activate/deactivate user accounts
+
+### Initial Admin Setup
+
+On first startup, the system automatically creates an admin account using the credentials specified in your `.env` file:
+
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_secure_admin_password
+JWT_SECRET=your_jwt_secret_key
+```
+
+**Important**: Change these default credentials immediately after first setup!
 
 ## Core Components
 
