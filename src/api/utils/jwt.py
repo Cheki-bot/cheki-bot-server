@@ -2,7 +2,7 @@ import jwt
 from datetime import datetime, timedelta
 from src import ENV
 
-def create_access_token(data: dict, expires_delta: int = 60 * 24):
+def create_access_token(data: dict, expires_delta: int = 60):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=expires_delta)
     to_encode.update({"exp": expire})

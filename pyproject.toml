@@ -20,6 +20,7 @@ dependencies = [
     "langchain-openai>=0.3.28",
     "pydantic-settings>=2.10.1",
     "pyjwt>=2.10.1",
+    "passlib[bcrypt]>=1.7.4",
     "pymongo>=4.15.1",
     "pytest-asyncio>=1.1.0",
     "python-telegram-bot>=21.0.1",
