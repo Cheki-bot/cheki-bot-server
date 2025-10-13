@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from openai import BaseModel
 from pydantic import Field
@@ -27,3 +27,26 @@ class QueryRequest(BaseModel):
         examples=["Hola, como estas?"],
     )
     history: list[ChatMessage] = Field(..., max_length=50)
+
+class RegisterRequest(BaseModel):
+    email: str = Field(..., examples=["user@example.com"])
+    password: str = Field(..., min_length=8)
+    full_name: Optional[str] = Field(default=None)
+    role: Literal["Admin", "User"] = Field(default="User")
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    id: str = Field(alias="_id")
+    email: str
+    full_name: Optional[str] = None
+    role: Literal["Admin", "User"]
+    is_active: bool
