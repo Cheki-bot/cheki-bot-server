@@ -59,6 +59,7 @@ def register(data: RegisterRequest, db: Annotated[MongoDB, Depends(get_db)]):
         "is_active": True,
     }
     users.insert_one(user_doc)
+    user_doc.pop("password_hash", None)
     return user_doc
 
 MAX_LOGIN_ATTEMPTS = 5

@@ -45,6 +45,8 @@ class TokenResponse(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = {"populate_by_name": True}
+    
     id: str = Field(alias="_id")
     email: str
     full_name: Optional[str] = None

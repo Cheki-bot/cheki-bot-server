@@ -80,7 +80,7 @@ def admin_user(fake_db):
         "email": "admin@test.com",
         "full_name": "Admin User",
         "role": "Admin",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqwBXLqn4C",  # password: "adminpass123"
+        "password_hash": "$2b$12$7utAbcmhDd6V7m.tjwplYeTJXj7ZkM6QIG8gzFR6q/Arn79s1SJVC",  # password: "adminpass123"
         "is_active": True,
         "failed_attempts": 0,
     }
@@ -97,7 +97,7 @@ def regular_user(fake_db):
         "email": "user@test.com",
         "full_name": "Regular User",
         "role": "User",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqwBXLqn4C",  # password: "userpass123"
+        "password_hash": "$2b$12$7raGbA.DySA7MZLVHe7L1u.QYGO7KKW7J6qzfkTFLpifj2lwsBiTS",  # password: "userpass123"
         "is_active": True,
         "failed_attempts": 0,
     }
@@ -233,7 +233,7 @@ def test_login_reset_failed_attempts_on_success(client, fake_db):
         "email": "resetuser@test.com",
         "full_name": "Reset User",
         "role": "User",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqwBXLqn4C",  # password: "userpass123"
+        "password_hash": "$2b$12$7raGbA.DySA7MZLVHe7L1u.QYGO7KKW7J6qzfkTFLpifj2lwsBiTS",  # password: "userpass123"
         "is_active": True,
         "failed_attempts": 3,
     }
@@ -293,7 +293,7 @@ def test_me_endpoint_inactive_user(client, fake_db):
         "email": "inactive@test.com",
         "full_name": "Inactive User",
         "role": "User",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqwBXLqn4C",
+        "password_hash": "$2b$12$7raGbA.DySA7MZLVHe7L1u.QYGO7KKW7J6qzfkTFLpifj2lwsBiTS",
         "is_active": False,
     }
     users.insert_one(user)
@@ -348,7 +348,7 @@ def test_activate_user_as_admin(client, admin_user, fake_db):
         "email": "inactive2@test.com",
         "full_name": "Inactive User 2",
         "role": "User",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqwBXLqn4C",
+        "password_hash": "$2b$12$7raGbA.DySA7MZLVHe7L1u.QYGO7KKW7J6qzfkTFLpifj2lwsBiTS",
         "is_active": False,
     }
     users.insert_one(inactive_user)
