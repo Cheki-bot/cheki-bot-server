@@ -45,3 +45,6 @@ jobs:
           MONGO_INDEX_NAME: "search_index"
           MONGO_DIMENSIONS: "1536"
           MONGO_URI: "mongodb://username:password@localhost:27017/?directConnection=true"
+          ADMIN_EMAIL: "admin@test.com"
+          ADMIN_PASSWORD: "test_admin_password_123"
+          JWT_SECRET: "test_jwt_secret_key_for_ci_testing_only"
