@@ -4,13 +4,15 @@ from typing import List
 
 from pydantic import BaseModel
 
+from .mongo_model import MongoModel
+
 
 class NewsTag(BaseModel):
     name: str
     url: str
 
 
-class NewsVerification(BaseModel):
+class NewsVerification(MongoModel):
     title: str
     classified_as: str
     section_url: str

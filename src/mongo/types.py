@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from bson import ObjectId
 from pydantic import BeforeValidator
 
-PyObjectId = Annotated[str, BeforeValidator(str)]
+PyObjectId = Annotated[ObjectId, BeforeValidator(lambda v: ObjectId(str(v)))]

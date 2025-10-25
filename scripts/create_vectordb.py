@@ -13,7 +13,7 @@ from pydantic import TypeAdapter
 from src.agent.schemas import Topic
 from src.core.tools import sanitize_text_input
 from src.mongo import get_mongo_db
-from src.mongo.models import CandidacyModel, ElectionModel, NewsVerificationModel
+from src.mongo.models import Candidacy, Election, NewsVerification
 from src.settings import Settings
 
 settings = Settings(_env_file=".env")
@@ -44,7 +44,7 @@ def load_verifications():
     db = get_mongo_db()
     collection = db.get_collection("news_verifications")
 
-    verifications = TypeAdapter(list[NewsVerificationModel]).validate_python(collection.find().to_list())
+    verifications = TypeAdapter(list[NewsVerification]).validate_python(collection.find().to_list())
 
     base_metadata = {"collection_name": "news_verifications", "topic": Topic.VERIFICATION_OF_NEWS.value}
     documents = []
@@ -169,9 +169,9 @@ def load_candidates():
     can_coll = db.get_collection("candidacies")
     ele_call = db.get_collection("elections")
     cursor = can_coll.find({})
-    candidates: list[CandidacyModel] = TypeAdapter(list[CandidacyModel]).validate_python(cursor)
+    candidates = TypeAdapter(list[Candidacy]).validate_python(cursor)
     cursor = ele_call.find({})
-    elections = TypeAdapter(list[ElectionModel]).validate_python(cursor)
+    elections = TypeAdapter(list[Election]).validate_python(cursor)
 
     base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDATES.value}
 
