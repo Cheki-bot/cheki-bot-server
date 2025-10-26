@@ -37,17 +37,6 @@ class PoliticalParty(MongoModel):
     description: Optional[str] = None
 
 
-class GovernmentItem(MongoModel):
-    header: str
-    content: str
-    summary: Optional[str] = None
-
-
-class GovernmentProgram(MongoModel):
-    content: str
-    candidacy_id: PyObjectId
-
-
 class Candidacy(MongoModel):
     party: PoliticalParty
     candidates: list[Politician]

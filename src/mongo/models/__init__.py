@@ -4,7 +4,6 @@ from .candidacies_models import (
     Election,
     ElectionRound,
     ElectionStatus,
-    GovernmentItem,
     PoliticalParty,
     Politician,
 )
@@ -17,7 +16,6 @@ __all__ = [
     "Election",
     "ElectionRound",
     "ElectionStatus",
-    "GovernmentItem",
     "PoliticalParty",
     "Politician",
     "NewsTag",
