@@ -2,7 +2,6 @@ import json
 import re
 from datetime import datetime
 
-from bson import ObjectId
 from pydantic import TypeAdapter
 
 from src.mongo import get_mongo_db
@@ -16,6 +15,7 @@ from src.mongo.models import (
     Politician,
 )
 from src.mongo.models.candidacies_models import CandidacyStatus
+from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.types import PyObjectId
 from src.settings import Settings
 
@@ -45,17 +45,13 @@ def fill_elections():
     ]
     db = get_mongo_db()
     collection = db.get_collection("elections")
-    ids = {str(_id["_id"]) for _id in collection.find({}, {"_id": 1}).to_list()}
+
+    ids = {_id["_id"] for _id in collection.find({}, {"_id": 1}).to_list()}
+
     records = TypeAdapter(list).dump_python(elections, by_alias=True)
 
-    records = [
-        {
-            **record,
-            "_id": ObjectId(record["_id"]),
-        }
-        for record in records
-        if record["_id"] not in ids
-    ]
+    records = [record for record in records if record["_id"] not in ids]
+
     if not records:
         return 0
     results = collection.insert_many(records)
@@ -86,9 +82,13 @@ def fill_candidacies() -> int:
                 Politician(full_name=gp["president"], position="Presidente"),
                 Politician(full_name=gp["vice_president"], position="Vice-presidente"),
             ],
-            status=CandidacyStatus.WITHDRAWN if gp.get("status") == "no participa" else CandidacyStatus.ACTIVE,
+            status=CandidacyStatus.WITHDRAWN
+            if gp.get("status") == "no participa"
+            else CandidacyStatus.ACTIVE,
             government_plan=text,
-            election_id=PyObjectId(first_election_id) if not gp["segunda_vuelta"] else PyObjectId(second_election_id),
+            election_id=PyObjectId(first_election_id)
+            if not gp["segunda_vuelta"]
+            else PyObjectId(second_election_id),
         )
         candidacies.append(candidacy)
 
@@ -153,6 +153,33 @@ def fill_verifications():
     return len(results.inserted_ids)
 
 
+def fill_questions_and_asnwers():
+    db = get_mongo_db()
+    collection = db["questions_and_answers"]
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        qas_raw = data.get("questions_and_answers", [])
+    qas = TypeAdapter(list[QuestionsAndAnswers]).validate_python(qas_raw)
+    records = TypeAdapter(list).dump_python(qas, exclude_none=True)
+
+    ids = {_id["_id"] for _id in collection.find({}, {"_id": 1}).to_list()}
+
+    records = [record for record in records if record.get("_id") not in ids]
+
+    if not records:
+        return 0
+
+    results = collection.insert_many(records)
+    for _id, qa_raw in zip(results.inserted_ids, qas_raw):
+        qa_raw["_id"] = str(_id)
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    db.client.close()
+    return len(results.inserted_ids)
+
+
 def fill_database():
     print("Filling database...")
     count = fill_elections()
@@ -163,3 +190,6 @@ def fill_database():
     print("Filling candidacies...")
     count = fill_candidacies()
     print(f"Se crearon {count} candidaturas")
+    print("Filling questions and answers...")
+    count = fill_questions_and_asnwers()
+    print(f"Se crearon {count} preguntas y respuestas")
