@@ -4,17 +4,21 @@ from datetime import datetime
 
 from pydantic import TypeAdapter
 
+from src.core.tools import bo_str_date_to_datetime
 from src.mongo import get_mongo_db
 from src.mongo.models import (
+    CalendarEvent,
+    CalendarSignature,
     Candidacy,
+    CandidacyStatus,
     Election,
     ElectionStatus,
+    ElectoralCalendar,
     NewsTag,
     NewsVerification,
     PoliticalParty,
     Politician,
 )
-from src.mongo.models.candidacies_models import CandidacyStatus
 from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.types import PyObjectId
 from src.settings import Settings
@@ -180,6 +184,80 @@ def fill_questions_and_asnwers():
     return len(results.inserted_ids)
 
 
+def fill_calendar():
+    db = get_mongo_db()
+    collection = db["calendars"]
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        calendar_metadata = data.get("calendar_metadata", {})
+        calender_events = data.get("calendar", [])
+
+    ids = {str(_id["_id"]) for _id in collection.find({}, {"_id": 1}).to_list()}
+
+    registered_ids = calendar_metadata.get("registered_ids")
+
+    if registered_ids is not None and any([_id in ids for _id in registered_ids]):
+        return 0, 0
+
+    first_election_id = "68e533b125beb0374356fcac"
+    second_election_id = "68e533b225beb0374356fcad"
+
+    first_round_calendar = ElectoralCalendar(
+        pdf_url="https://www.oep.org.bo/documentos/04-04-25-calendario-Electoral-EG-2025.pdf",
+        title=calendar_metadata.get("title"),
+        resolution=calendar_metadata.get("resolution"),
+        date=bo_str_date_to_datetime(calendar_metadata.get("date")),
+        introduction=calendar_metadata.get("introduction"),
+        signatures=[
+            CalendarSignature(full_name=s.get("name"), position=s.get("position"))
+            for s in calendar_metadata.get("signatories", [])
+        ],
+        election_id=first_election_id,
+    )
+
+    second_round_calendar = first_round_calendar.model_copy(deep=True)
+    second_round_calendar.election_id = second_election_id
+
+    records = [first_round_calendar.model_dump(), second_round_calendar.model_dump()]
+
+    if not records:
+        return 0, 0
+
+    results = collection.insert_many(records)
+    events = []
+
+    for calendar_id in results.inserted_ids:
+        events.extend(
+            [
+                CalendarEvent(
+                    scenery=event.get("scenario"),
+                    no=event.get("no"),
+                    activity=event.get("activity"),
+                    days=event.get("days"),
+                    from_date=bo_str_date_to_datetime(event.get("from_date")),
+                    to_date=bo_str_date_to_datetime(event.get("to_date")),
+                    duration=event.get("duration"),
+                    reference=event.get("reference"),
+                    place=event.get("plazo"),
+                    calendar_id=calendar_id,
+                )
+                for event in calender_events
+            ]
+        )
+    collection = db["calendar_events"]
+    records = TypeAdapter(list).dump_python(events, exclude_none=True)
+    events_results = collection.insert_many(records)
+
+    calendar_metadata["registered_ids"] = [str(_id) for _id in results.inserted_ids]
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    db.client.close()
+    return len(results.inserted_ids), len(events_results.inserted_ids)
+
+
 def fill_database():
     print("Filling database...")
     count = fill_elections()
@@ -193,3 +271,6 @@ def fill_database():
     print("Filling questions and answers...")
     count = fill_questions_and_asnwers()
     print(f"Se crearon {count} preguntas y respuestas")
+    print("Filling calendar...")
+    count_calendars, count_events = fill_calendar()
+    print(f"Se crearon {count_calendars} calendarios y {count_events} eventos")

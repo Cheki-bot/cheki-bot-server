@@ -2,15 +2,18 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from src.mongo.models.mongo_model import MongoModel
+from src.mongo.types import PyObjectId
 
 
 class CalendarSignature(BaseModel):
     full_name: str
-    possition: str
+    position: str
 
 
-class Event(BaseModel):
+class CalendarEvent(MongoModel):
     scenery: str
     no: int
     activity: str
@@ -20,13 +23,15 @@ class Event(BaseModel):
     duration: int
     reference: str
     place: str
+    calendar_id: PyObjectId
 
 
-class ElectoralCalendar(BaseModel):
-    filename: str
+class ElectoralCalendar(MongoModel):
+    pdf_url: str
     title: str
     resolution: str
     date: datetime
     introduction: Optional[str] = None
     signatures: List[CalendarSignature] = []
-    events: List[Event] = []
+    events: List[CalendarEvent] = Field(default_factory=list, exclude=True)
+    election_id: PyObjectId
