@@ -31,7 +31,7 @@ class Politician(BaseModel):
     position: str
 
 
-class PoliticalParty(MongoModel):
+class PoliticalParty(BaseModel):
     name: str
     sigla: str
     description: Optional[str] = None
