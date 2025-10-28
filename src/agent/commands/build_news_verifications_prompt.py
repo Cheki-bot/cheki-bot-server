@@ -5,7 +5,7 @@ from pymongo.database import Database
 
 from src.agent.context_managers.prompts import VERIFICATION_TEMPLATE
 from src.agent.interfaces.build_topic_prompt import BuildTopicPrompt
-from src.mongo.models import NewsVerificationModel
+from src.mongo.models import NewsVerification
 
 
 class BuildNewsVerificatiosPrompt(BuildTopicPrompt):
@@ -19,9 +19,13 @@ class BuildNewsVerificatiosPrompt(BuildTopicPrompt):
     async def run(self, documents: list[Document]) -> str:
         collection = self.db.get_collection("news_verifications")
 
-        ids = {ObjectId(doc.metadata.get("data_id")) for doc in documents if doc.metadata.get("data_id") is not None}
+        ids = {
+            ObjectId(doc.metadata.get("data_id"))
+            for doc in documents
+            if doc.metadata.get("data_id") is not None
+        }
 
-        articles = TypeAdapter(list[NewsVerificationModel]).validate_python(
+        articles = TypeAdapter(list[NewsVerification]).validate_python(
             collection.find({"_id": {"$in": list(ids)}})
         )
 

@@ -1,6 +1,5 @@
 from typing import Any, Callable, Literal, Optional
 
-from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.main import IncEx
 
@@ -10,7 +9,6 @@ from src.mongo.types import PyObjectId
 class MongoModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     model_config = ConfigDict(
-        json_encoders={ObjectId: str},
         populate_by_name=True,
         use_enum_values=True,
         validate_assignment=True,

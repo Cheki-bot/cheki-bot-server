@@ -4,8 +4,7 @@ from pydantic import TypeAdapter
 from pymongo.database import Database
 
 from src.agent.interfaces.build_topic_prompt import BuildTopicPrompt
-from src.core.entities.election_entities import Status
-from src.mongo.models import CandidacyModel, ElectionModel
+from src.mongo.models import Candidacy, Election, ElectionStatus
 
 
 class BuildCandidaciesPrompt(BuildTopicPrompt):
@@ -18,19 +17,23 @@ class BuildCandidaciesPrompt(BuildTopicPrompt):
 
     async def run(self, documents: list[Document]) -> str:
         status = {
-            Status.ACTIVE.value: "Activa en este momento",
-            Status.COMPLETED.value: "Finalizada",
-            Status.UPCOMING.value: "Anunciada para el futuro",
+            ElectionStatus.ACTIVE.value: "Activa en este momento",
+            ElectionStatus.COMPLETED.value: "Finalizada",
+            ElectionStatus.UPCOMING.value: "Anunciada para el futuro",
         }
 
-        ids = {ObjectId(doc.metadata.get("data_id")) for doc in documents if doc.metadata.get("data_id") is not None}
+        ids = {
+            ObjectId(doc.metadata.get("data_id"))
+            for doc in documents
+            if doc.metadata.get("data_id") is not None
+        }
 
         cand_coll = self.db.get_collection("candidacies")
         elect_coll = self.db.get_collection("elections")
 
         cursor = elect_coll.find({"status": "active"})
-        elections = TypeAdapter(list[ElectionModel]).validate_python(cursor)
-        elections_dict: dict[str, ElectionModel] = {e.id: e for e in elections}
+        elections = TypeAdapter(list[Election]).validate_python(cursor)
+        elections_dict: dict[str, Election] = {str(e.id): e for e in elections}
         election_ids = set(elections_dict.keys())
 
         cursor = cand_coll.find(
@@ -40,8 +43,8 @@ class BuildCandidaciesPrompt(BuildTopicPrompt):
             }
         )
         for data in cursor:
-            candidacy = CandidacyModel(**data)
-            elections_dict[candidacy.election_id].candidacies.append(candidacy)
+            candidacy = Candidacy(**data)
+            elections_dict[str(candidacy.election_id)].candidacies.append(candidacy)
 
         prompt = ""
 
