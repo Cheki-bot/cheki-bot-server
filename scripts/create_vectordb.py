@@ -10,6 +10,7 @@ from pydantic import TypeAdapter
 from src.agent.schemas import Topic
 from src.core.tools import sanitize_text_input
 from src.mongo import get_mongo_db
+from src.mongo.consts import FILTERS
 from src.mongo.models import Candidacy, Election, NewsVerification
 from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
 from src.mongo.models.qa_model import QuestionsAndAnswers
@@ -230,19 +231,27 @@ def create_vectordb():
         relevance_score_fn="cosine",
         namespace=f"{settings.mongo.db_name}.{settings.mongo.collection_name}",
     )
+    search_index = None
 
     for idx in vectordb.collection.list_search_indexes():
         if idx["name"] == settings.mongo.index_name:
-            vectordb.collection.drop_search_index(settings.mongo.index_name)
-            print(f"Index {settings.mongo.index_name} dropped")
+            search_index = idx
             break
-    else:
-        print(f"Creating index {settings.mongo.index_name}")
-        vectordb.create_vector_search_index(
-            settings.mongo.dimensions, ["type", "collection_name", "topic", "data_id"]
-        )
 
+    if search_index:
+        existing_filters = {
+            f["path"] for f in search_index["latestDefinition"]["fields"] if f["type"] == "filter"
+        }
+
+        if not existing_filters == set(FILTERS):
+            vectordb.collection.drop_search_index(settings.mongo.index_name)
+            print("Index dropped due to filter mismatch")
+
+    vectordb.create_vector_search_index(settings.mongo.dimensions, FILTERS)
+
+    print("deleteting old data...")
     vectordb.collection.delete_many({})
+
     vectordb.add_documents(documents=all_documents)
 
     print("Base de datos vectorial creada y persistida")

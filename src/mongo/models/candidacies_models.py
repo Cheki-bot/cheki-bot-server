@@ -29,6 +29,7 @@ class ElectionRound(str, Enum):
 class Politician(BaseModel):
     full_name: str
     position: str
+    is_active: bool = Field(default=True)
 
 
 class PoliticalParty(BaseModel):
