@@ -59,14 +59,14 @@ class AsyncAgent:
             topic_selection = await self.classify_topic(messages)
 
             if topic_selection.topic is Topic.INSTRUCTIONS:
-                messages = (
+                messages_str = (
                     "Responde al usuario con algo simiar a esto:\n"
                     "Lo siento como Checkibot no puedo hacer eso "
                     "Puedo ayudarte con:\n"
                     "- Verificationes de noticias\n"
                     "- Información electoral (candidatos, planes de govierno y preguntas sobre el proceso electoral)"
                 )
-                context_messages = [SystemMessage(content=messages)]
+                context_messages: list[BaseMessage] = [SystemMessage(content=messages_str)]
                 async for chunk in self.chat_model.astream(context_messages):
                     yield AgentResponseChunk(content=str(chunk.content), type="text")
                 yield AgentResponseChunk(content="", type="text", done=True)
@@ -120,7 +120,9 @@ class AsyncAgent:
             yield AgentResponseChunk(content=f"Error: {str(e)}", type="error", done=True)
             raise e
 
-    async def invoke(self, messages: Sequence[BaseMessage], platform: Platform = Platform.WEB) -> str:
+    async def invoke(
+        self, messages: Sequence[BaseMessage], platform: Platform = Platform.WEB
+    ) -> str:
         """Process a query and generate a response using context-aware reasoning.
 
         Retrieves relevant context based on the query and conversation history,

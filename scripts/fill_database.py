@@ -37,14 +37,15 @@ def fill_elections():
             description="Los votantes bolivianos elegirán al presidente y vicepresidente de Bolivia, 130 miembros de la Cámara de Diputados de Bolivia y 36 integrantes de la Cámara de Senadores de Bolivia para el período 2025-2030.",
             election_date=datetime(2025, 8, 17),
             status=ElectionStatus.COMPLETED,
-            result="Las elecciones concluyeron en segunda vuelta",
+            result="📊 Resultados oficiales — Elecciones 2025 🇧🇴  \n🥇 PDC: 32.06%\n🥈 LIBRE: 26.7%\nNingún partido alcanzó mayoría absoluta.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
         ),
         Election(
             id="68e533b225beb0374356fcad",
             name="Elecciones generales de Bolivia de 2025 segunda vuelta",
             description="Segunda vuelta de las elecciones generales de Bolivia de 2025",
-            election_date=datetime(2025, 10, 17),
+            election_date=datetime(2025, 10, 19),
             status=ElectionStatus.ACTIVE,
+            result="📊 Resultados oficiales — Elecciones 2025 🇧🇴 Segunda vuelta  \n🥇 PDC: 54.96%\n🥈 LIBRE: 45.04%.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
         ),
     ]
     db = get_mongo_db()
@@ -91,7 +92,7 @@ def fill_candidacies() -> int:
             else CandidacyStatus.ACTIVE,
             government_plan=text,
             election_id=PyObjectId(first_election_id)
-            if not gp["segunda_vuelta"]
+            if not gp.get("segunda_vuelta", False)
             else PyObjectId(second_election_id),
         )
         candidacies.append(candidacy)
@@ -100,7 +101,7 @@ def fill_candidacies() -> int:
 
     ids = {_id["_id"] for _id in collection.find({}, {"_id": 1}).to_list()}
 
-    records = [record for record in records if record["_id"] not in ids]
+    records = [record for record in records if record.get("_id") not in ids]
 
     if not records:
         return 0
