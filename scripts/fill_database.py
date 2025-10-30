@@ -19,8 +19,8 @@ from src.mongo.models import (
     NewsVerification,
     PoliticalParty,
     Politician,
+    QuestionsAndAnswers,
 )
-from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.types import PyObjectId
 
 folder = "base_file"
@@ -36,14 +36,16 @@ def fill_elections():
             election_date=datetime(2025, 8, 17),
             status=ElectionStatus.COMPLETED,
             result="📊 Resultados oficiales — Elecciones 2025 🇧🇴  \n🥇 PDC: 32.06%\n🥈 LIBRE: 26.7%\nNingún partido alcanzó mayoría absoluta.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
+            source="https://www.chequeatuvoto.chequeabolivia.bo/",
         ),
         Election(
             id="68e533b225beb0374356fcad",
             name="Elecciones generales de Bolivia de 2025 segunda vuelta",
             description="Segunda vuelta de las elecciones generales de Bolivia de 2025",
             election_date=datetime(2025, 10, 19),
-            status=ElectionStatus.ACTIVE,
+            status=ElectionStatus.COMPLETED,
             result="📊 Resultados oficiales — Elecciones 2025 🇧🇴 Segunda vuelta  \n🥇 PDC: 54.96%\n🥈 LIBRE: 45.04%.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
+            source="https://www.chequeatuvoto.chequeabolivia.bo/",
         ),
     ]
     db = get_mongo_db()
@@ -89,27 +91,29 @@ def fill_candidacies() -> int:
             if gp.get("status") == "no participa"
             else CandidacyStatus.ACTIVE,
             government_plan=text,
-            election_id=PyObjectId(first_election_id)
-            if not gp.get("segunda_vuelta", False)
-            else PyObjectId(second_election_id),
+            election_id=PyObjectId(first_election_id),
         )
+
         candidacies.append(candidacy)
+        if gp.get("segunda_vuelta", False):
+            candidacy = candidacy.model_copy(deep=True)
+            candidacy.election_id = PyObjectId(second_election_id)
+            candidacies.append(candidacy)
 
     records = TypeAdapter(list).dump_python(candidacies, by_alias=True, exclude_none=True)
 
-    ids = {_id["_id"] for _id in collection.find({}, {"_id": 1}).to_list()}
+    elements = {(e["party"]["sigla"], str(e["election_id"])) for e in collection.find().to_list()}
 
-    records = [record for record in records if record.get("_id") not in ids]
+    records = [
+        record
+        for record in records
+        if (record.get("party").get("sigla"), str(record.get("election_id"))) not in elements
+    ]
 
     if not records:
         return 0
 
     results = collection.insert_many(records)
-
-    for _id, gp in zip(results.inserted_ids, gov_programs):
-        gp["_id"] = str(_id)
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
     db.client.close()
     return len(results.inserted_ids)
 

@@ -12,9 +12,14 @@ from src.core.config import settings
 from src.core.tools import sanitize_text_input
 from src.mongo import get_mongo_db
 from src.mongo.consts import FILTERS
-from src.mongo.models import Candidacy, Election, NewsVerification
-from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
-from src.mongo.models.qa_model import QuestionsAndAnswers
+from src.mongo.models import (
+    CalendarEvent,
+    Candidacy,
+    Election,
+    ElectoralCalendar,
+    NewsVerification,
+    QuestionsAndAnswers,
+)
 
 folder = "base_file"
 file_path = f"{folder}/{settings.google.data_filename}"
@@ -121,13 +126,20 @@ def load_candidates():
     candidates = TypeAdapter(list[Candidacy]).validate_python(can_coll.find({}))
     elections = TypeAdapter(list[Election]).validate_python(ele_call.find({}))
 
-    base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDATES.value}
+    base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDACIES.value}
 
     all_documents = []
     for election in elections:
+        content = sanitize_text_input(
+            (f"candidatos en las {election.name} {election.active_round} {election.status}")
+        )
         document = Document(
-            sanitize_text_input(f"candidatos en las {election.name}"),
-            metadata={"data_id": election.id, **base_metadata},
+            content,
+            metadata={
+                **base_metadata,
+                "data_id": election.id,
+                "collection_name": Election.__collection_name__,
+            },
         )
         all_documents.append(document)
 
@@ -141,21 +153,23 @@ def load_candidates():
     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
 
     for candidacy in candidates:
-        content = f"partido {candidacy.party.name} ({candidacy.party.sigla}) "
-        for politician in candidacy.candidates:
-            content += f"{politician.full_name} como {politician.position} "
-
-        content = sanitize_text_input(content)
         metadata = {"data_id": candidacy.id, **base_metadata}
 
-        gov_program_docs = markdown_splitter.split_text(candidacy.government_plan)
+        content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
+        content = sanitize_text_input(content)
 
         all_documents.append(Document(content, metadata=metadata))
+        for politician in candidacy.candidates:
+            content = f"{politician.full_name} como {politician.position}"
+            all_documents.append(Document(content, metadata=metadata))
+
+        gov_program_docs = markdown_splitter.split_text(candidacy.government_plan)
         metadata = {
             "data_id": candidacy.id,
             **base_metadata,
             "topic": Topic.GOVERNMENT_PROPOSALS.value,
         }
+
         for doc in gov_program_docs:
             if len(encoding.encode(doc.page_content)) > 1000:
                 sub_docs = splitter.split_documents([doc])
