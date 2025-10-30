@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import TypeAdapter
 
+from src.core.config import settings
 from src.core.tools import bo_str_date_to_datetime
 from src.mongo import get_mongo_db
 from src.mongo.models import (
@@ -21,9 +22,6 @@ from src.mongo.models import (
 )
 from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.types import PyObjectId
-from src.settings import Settings
-
-settings = Settings(_env_file=".env")
 
 folder = "base_file"
 file_path = f"{folder}/{settings.google.data_filename}"

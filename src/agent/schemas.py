@@ -36,6 +36,7 @@ class TopicSelection(BaseModel):
     user_query: str = Field("")
     optimized_query: str = Field("")
     additional_topics: list[Topic] = Field(default_factory=list)
+    extra_params: dict = Field(default_factory=dict)
 
 
 class AgentResponseChunk(BaseModel):

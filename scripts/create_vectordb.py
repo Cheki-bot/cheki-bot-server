@@ -8,15 +8,13 @@ from langchain_text_splitters import MarkdownHeaderTextSplitter
 from pydantic import TypeAdapter
 
 from src.agent.schemas import Topic
+from src.core.config import settings
 from src.core.tools import sanitize_text_input
 from src.mongo import get_mongo_db
 from src.mongo.consts import FILTERS
 from src.mongo.models import Candidacy, Election, NewsVerification
 from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
 from src.mongo.models.qa_model import QuestionsAndAnswers
-from src.settings import Settings
-
-settings = Settings(_env_file=".env")
 
 folder = "base_file"
 file_path = f"{folder}/{settings.google.data_filename}"
@@ -200,6 +198,10 @@ def create_vectordb():
     verifications_docs = load_verifications()
     print(f"Se cargador {len(verifications_docs)} verificaciones")
 
+    print("cargando elecciones ...")
+    elections_docs = load_elections()
+    print(f"Se cargador {len(elections_docs)} elecciones")
+
     print("cargando calendario de elecciones ...")
     calendar_metadata = load_calendar_metadata()
     calendar_docs = load_calendar_events()
@@ -215,6 +217,7 @@ def create_vectordb():
 
     all_documents = [
         *verifications_docs,
+        *elections_docs,
         *calendar_metadata,
         *calendar_docs,
         *candidate_docs,

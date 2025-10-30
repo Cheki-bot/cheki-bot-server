@@ -181,10 +181,29 @@ Temas:
 {topics}
 """
 
+GET_CANDIDACIES_PROMPT = """Detecta si la consulta del usuario busca información sobre candidatos o candidaturas.
+
+{{
+    "topic": "CANDIDATES",
+    "description": "El usuario quiere conocer los candidatos o candidaturas en elecciones.",
+    "user_query": "<texto original>",
+    "optimized_query": "<consulta clara y concisa (máx. 10-12 palabras, todo en minúsculas)>",
+    "additional_topics": ["<primer tema adicional>", "<segundo tema adicional>"],
+    "extra_args": {{
+        "election_name": "<null si no se especifica, ej: 'Elecciones 2024', 'segunda vuelta 2025', etc.>",
+        "year": "<null si no se menciona, ej: '2024', '2025'>"
+    }}
+}}
+
+Reglas:
+- Si el usuario menciona una elección específica (ej: "segunda vuelta", "elecciones 2024"), asigna "election_name".
+- Si menciona un año, asigna "year".
+- Si no se mencionan, deja ambos como null.
+"""
 
 TOPIC_DESCRIPTIONS = {
     Topic.VERIFICATION_OF_NEWS: "Cuando el usuario consulta sobre la veracidad de una noticia, declaración o información pública, y desea saber si es verdadera, falsa o engañosa.",
-    Topic.CANDIDATES: "Cuando el usuario pregunta por los candidatos (nombres o partidos politicos) que participan en las elecciones actuales o busca información sobre ellos.",
+    Topic.CANDIDATES: GET_CANDIDACIES_PROMPT,
     Topic.GOVERNMENT_PROPOSALS: "Cuando el usuario solicita conocer o comparar las propuestas, planes o programas de los candidatos o partidos políticos.",
     Topic.ELECTORAL_CALENDAR: "Cuando el usuario pregunta por fechas, plazos o eventos importantes del proceso electoral.",
     Topic.QUESTIONS_AND_ANSWERS: "Cuando el usuario realiza preguntas generales sobre el proceso electoral, sus reglas, instituciones o funcionamiento.",
@@ -192,6 +211,12 @@ TOPIC_DESCRIPTIONS = {
     Topic.GENERAL_INFO: "Cuando la consulta es ambigua, amplia o sin un contexto claro. Ejemplo: '¿Qué información tienes?' o '¿Qué puedes contarme?'.",
     Topic.INSTRUCTIONS: "Cuando el usuario da órdenes, solicita ajustes en el comportamiento o pide modificar la forma en que el asistente responde.",
 }
+
+
+SEARCH_ELECTION_PROMPT = """Segun la petición del usuario seleccionea la elección que está buscando y retorna un json unicamente con el id, ej: {{"_id": <ObjectId>}}. Si no hay coincidencia, retorna {{"_id": null}}. 
+Elecciones disponibles:
+{elections_list}
+"""
 
 
 def get_topics() -> str:

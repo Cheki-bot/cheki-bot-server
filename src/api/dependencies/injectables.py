@@ -70,11 +70,15 @@ def get_mongo_vdb(emb_model: "EmbeddingModelDep", db: "MongoDBDep") -> VectorSto
         index_name=ENV.mongo.index_name,
         relevance_score_fn="cosine",
     )
-    vector_db.create_vector_search_index(ENV.mongo.dimensions, ["type", "collection_name", "topic", "data_id"])
+    vector_db.create_vector_search_index(
+        ENV.mongo.dimensions, ["type", "collection_name", "topic", "data_id"]
+    )
     return vector_db
 
 
-def get_rag_engine(vector_db: Annotated[MongoDBAtlasVectorSearch, Depends(get_mongo_vdb)]) -> AsyncRAGRetrieve:
+def get_rag_engine(
+    vector_db: Annotated[MongoDBAtlasVectorSearch, Depends(get_mongo_vdb)],
+) -> AsyncRAGRetrieve:
     return AsyncRAGRetrieve(vector_db=vector_db)
 
 
