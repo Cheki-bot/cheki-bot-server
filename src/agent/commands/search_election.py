@@ -1,24 +1,27 @@
 from datetime import datetime
 from typing import Optional
 
+from bson import ObjectId
 from langchain.chat_models.base import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable
+from langchain_mongodb import MongoDBAtlasVectorSearch
 from pydantic import TypeAdapter
-from pymongo.database import Database
 
 from src.agent.context_managers.prompts import SEARCH_ELECTION_PROMPT
 from src.agent.interfaces.command import AsyncCommand
 from src.agent.schemas import TopicSelection
+from src.core.tools import get_bo_current_datetime_str
 from src.mongo.models.candidacies_models import Election
 
 
 class SearchElection(AsyncCommand):
-    def __init__(self, chat_model: BaseChatModel, db: Database) -> None:
+    def __init__(self, chat_model: BaseChatModel, vector_db: MongoDBAtlasVectorSearch) -> None:
         self.__chat_model = chat_model
-        self.__db = db
+        self.__db = vector_db.collection.database
+        self.__vec_db = vector_db
         self.__chain: Optional[RunnableSerializable] = None
 
     @property
@@ -35,22 +38,37 @@ class SearchElection(AsyncCommand):
         self.__chain = prompt | self.__chat_model | json_parser
         return self.__chain
 
-    def __get_elections(
+    async def __get_elections(
         self,
-        election_name: Optional[str] = None,
+        topic_selection: TopicSelection,
         year: Optional[str] = None,
     ) -> list[Election]:
-        if not election_name and not year:
-            return []
         if not year:
-            cursor = self.__db["elections"].find().sort("election_date").limit(4)
+            cursor = self.__db["elections"].find().sort("election_date").limit(2)
             return TypeAdapter(list[Election]).validate_python(cursor)
+
+        retriever = self.__vec_db.as_retriever(
+            search_kwargs={
+                "k": 2,
+                "pre_filter": {
+                    "topic": topic_selection.topic.value,
+                    "collection_name": Election.__collection_name__,
+                },
+            }
+        )
+        docs = await retriever.ainvoke(topic_selection.optimized_query)
+
+        _ids = [
+            ObjectId(doc.metadata.get("data_id")) for doc in docs if doc.metadata.get("data_id")
+        ]
 
         from_date = datetime(int(year), 1, 1)
         to_date = datetime(int(year), 12, 31)
+
         cursor = self.__db["elections"].find(
             {
                 "election_date": {"$gte": from_date, "$lte": to_date},
+                "_id": {"$in": _ids},
             }
         )
         return TypeAdapter(list[Election]).validate_python(cursor)
@@ -66,19 +84,26 @@ class SearchElection(AsyncCommand):
         elections_list = "\n".join(
             [f"{str(e.id)} - {e.name} - {e.election_date}" for e in elections]
         )
+
         res = self.chain.invoke(
             {
+                "date": get_bo_current_datetime_str(),
                 "messages": [HumanMessage(content=election_name)],
                 "elections_list": elections_list,
             }
         )
-        obj = self.__db["elections"].find_one({"_id": res.get("_id")}) if res.get("_id") else None
+
+        if res.get("_id") is None:
+            return None
+
+        obj = self.__db["elections"].find_one({"_id": ObjectId(res.get("_id"))})
         return Election.model_validate(obj) if obj else None
 
-    def run(self, topic_selection: TopicSelection) -> Optional[Election]:
-        election_name = topic_selection.extra_params.get("election_name")
-        year = topic_selection.extra_params.get("year")
-        elections = self.__get_elections(election_name, year)
-        election_name = election_name or topic_selection.optimized_query
-        election = self.__select_election(elections, election_name)
+    async def run(self, topic_selection: TopicSelection) -> Optional[Election]:
+        year = topic_selection.params.get("year")
+        elections = await self.__get_elections(topic_selection, year)
+        election = self.__select_election(elections, topic_selection.optimized_query)
         return election
+
+    async def __call__(self, topic_selection: TopicSelection) -> Optional[Election]:
+        return await self.run(topic_selection)

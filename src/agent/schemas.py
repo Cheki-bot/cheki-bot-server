@@ -15,7 +15,7 @@ class DocType(Enum):
 
 class Topic(str, Enum):
     VERIFICATION_OF_NEWS = "VERIFICATION_OF_NEWS"
-    CANDIDATES = "CANDIDATES"
+    CANDIDACIES = "CANDIDACIES"
     GOVERNMENT_PROPOSALS = "GOVERNMENT_PROPOSALS"
     ELECTORAL_CALENDAR = "ELECTORAL_CALENDAR"
     QUESTIONS_AND_ANSWERS = "QUESTIONS_AND_ANSWERS"
@@ -31,12 +31,11 @@ class Platform(str, Enum):
 
 
 class TopicSelection(BaseModel):
-    topic: Topic
-    description: str
-    user_query: str = Field("")
-    optimized_query: str = Field("")
-    additional_topics: list[Topic] = Field(default_factory=list)
-    extra_params: dict = Field(default_factory=dict)
+    topic: Topic = Field(...)
+    description: str = Field(...)
+    user_query: str = Field(...)
+    optimized_query: str = Field(...)
+    params: dict = Field(default_factory=dict)
 
 
 class AgentResponseChunk(BaseModel):

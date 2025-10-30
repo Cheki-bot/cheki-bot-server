@@ -39,6 +39,7 @@ class PoliticalParty(BaseModel):
 
 
 class Candidacy(MongoModel):
+    __collection_name__ = "candidacies"
     party: PoliticalParty
     candidates: list[Politician]
     status: CandidacyStatus = Field(default=CandidacyStatus.ACTIVE)
@@ -47,6 +48,7 @@ class Candidacy(MongoModel):
 
 
 class Election(MongoModel):
+    __collection_name__ = "elections"
     name: str
     description: str
     election_date: datetime
@@ -55,3 +57,4 @@ class Election(MongoModel):
     active_round: ElectionRound = Field(default=ElectionRound.FIRST_ROUND)
     winner: Optional[Candidacy] = None
     result: Optional[str] = None
+    source: str = Field("")

@@ -14,12 +14,12 @@ from src.agent.agent import AsyncAgent
 from src.agent.commands import (
     AsyncClassifyTopic,
     AsyncRAGRetrieve,
-    BuildCandidaciesPrompt,
-    BuildGenericPrompt,
-    BuildNewsVerificatiosPrompt,
-    BuildTopicPrompts,
+    BuildCandidaciesContext,
+    BuildTopicContext,
+    SearchElection,
 )
 from src.agent.schemas import Topic
+from src.core.config import settings
 from src.mongo import get_async_mongo_db
 
 
@@ -56,7 +56,7 @@ def get_embedding_model():
 def get_topic_selector() -> AsyncClassifyTopic:
     return AsyncClassifyTopic(
         model=ChatOpenAI(
-            model="gpt-4.1-nano",
+            model=settings.llm.model,
             temperature=0.1,
             api_key=ENV.llm.api_key,
         )
@@ -82,15 +82,15 @@ def get_rag_engine(
     return AsyncRAGRetrieve(vector_db=vector_db)
 
 
-def get_topic_prompt_builder(db: "MongoDBDep"):
-    build_topic_prompts = BuildTopicPrompts(
+def get_topic_prompt_builder(db: "MongoDBDep", search_election: "SearchElectionDep"):
+    build_topic_prompts = BuildTopicContext(
         {
-            Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosPrompt(db),
-            Topic.CANDIDATES: BuildCandidaciesPrompt(db),
-            Topic.GOVERNMENT_PROPOSALS: BuildGenericPrompt(),
-            Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),
-            Topic.QUESTIONS_AND_ANSWERS: BuildGenericPrompt(),
-            Topic.CAPABILITIES: BuildGenericPrompt(),
+            # Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosPrompt(db),
+            Topic.CANDIDACIES: BuildCandidaciesContext(db, search_election),
+            # Topic.GOVERNMENT_PROPOSALS: BuildGenericPrompt(),
+            # Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),
+            # Topic.QUESTIONS_AND_ANSWERS: BuildGenericPrompt(),
+            # Topic.CAPABILITIES: BuildGenericPrompt(),
         }
     )
     return build_topic_prompts
@@ -110,10 +110,19 @@ def get_agent(
     )
 
 
+def get_election_searcher(
+    chat_model: "ChatModelDep",
+    vector_db: "VectorDBDep",
+) -> SearchElection:
+    return SearchElection(chat_model, vector_db)
+
+
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
 EmbeddingModelDep = Annotated[Embeddings, Depends(get_embedding_model)]
 ClassifyTopicDep = Annotated[AsyncClassifyTopic, Depends(get_topic_selector)]
 MongoDBDep = Annotated[MongoDB, Depends(get_async_mongo_db)]
+VectorDBDep = Annotated[MongoDBAtlasVectorSearch, Depends(get_mongo_vdb)]
 RAGRetrieveDep = Annotated[AsyncRAGRetrieve, Depends(get_rag_engine)]
-BuildTopicPromptsDep = Annotated[BuildTopicPrompts, Depends(get_topic_prompt_builder)]
+BuildTopicPromptsDep = Annotated[BuildTopicContext, Depends(get_topic_prompt_builder)]
 AgentDep = Annotated[AsyncAgent, Depends(get_agent)]
+SearchElectionDep = Annotated[SearchElection, Depends(get_election_searcher)]

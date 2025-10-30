@@ -36,7 +36,7 @@ def fill_elections():
             election_date=datetime(2025, 8, 17),
             status=ElectionStatus.COMPLETED,
             result="📊 Resultados oficiales — Elecciones 2025 🇧🇴  \n🥇 PDC: 32.06%\n🥈 LIBRE: 26.7%\nNingún partido alcanzó mayoría absoluta.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
-            source="https://www.chequeatuvoto.chequeabolivia.bo/",
+            source="https://www.chequeatuvoto.chequeabolivia.bo/#parties",
         ),
         Election(
             id="68e533b225beb0374356fcad",
@@ -45,7 +45,7 @@ def fill_elections():
             election_date=datetime(2025, 10, 19),
             status=ElectionStatus.COMPLETED,
             result="📊 Resultados oficiales — Elecciones 2025 🇧🇴 Segunda vuelta  \n🥇 PDC: 54.96%\n🥈 LIBRE: 45.04%.\n🗳️ Segunda vuelta: 19 de octubre de 2025.\n#Elecciones2025 #BoliviaDecide #SegundaVuelta",
-            source="https://www.chequeatuvoto.chequeabolivia.bo/",
+            source="https://www.chequeatuvoto.chequeabolivia.bo/#parties",
         ),
     ]
     db = get_mongo_db()
