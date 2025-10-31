@@ -44,10 +44,3 @@ class BuildCandidaciesContext(BuildContext):
         context_builder.add_candidacies(candidacies)
 
         return context_builder
-
-    async def __call__(
-        self,
-        topic_selection: TopicSelection,
-        context_builder: ContextBuilder,
-    ) -> ContextBuilder:
-        return await self.run(topic_selection, context_builder)

@@ -65,11 +65,15 @@ class SearchElection(AsyncCommand):
         from_date = datetime(int(year), 1, 1)
         to_date = datetime(int(year), 12, 31)
 
-        cursor = self.__db["elections"].find(
-            {
-                "election_date": {"$gte": from_date, "$lte": to_date},
-                "_id": {"$in": _ids},
-            }
+        cursor = (
+            self.__db["elections"]
+            .find(
+                {
+                    "election_date": {"$gte": from_date, "$lte": to_date},
+                    "_id": {"$in": _ids},
+                }
+            )
+            .sort({"election_date": -1})
         )
         return TypeAdapter(list[Election]).validate_python(cursor)
 

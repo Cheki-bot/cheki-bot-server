@@ -14,7 +14,6 @@ class BuildContext(AsyncCommand):
     ) -> ContextBuilder:
         pass
 
-    @abstractmethod
     async def __call__(
         self,
         topic_selection: TopicSelection,

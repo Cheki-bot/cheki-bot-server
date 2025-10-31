@@ -40,12 +40,12 @@ splitter = RecursiveCharacterTextSplitter(
 
 def load_verifications():
     db = get_mongo_db()
-    collection = db.get_collection("news_verifications")
+    collection = db.get_collection(NewsVerification.__collection_name__)
 
     verifications = TypeAdapter(list[NewsVerification]).validate_python(collection.find().to_list())
 
     base_metadata = {
-        "collection_name": "news_verifications",
+        "collection_name": NewsVerification.__collection_name__,
         "topic": Topic.VERIFICATION_OF_NEWS.value,
     }
     documents = []

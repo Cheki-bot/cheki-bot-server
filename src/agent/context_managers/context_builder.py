@@ -1,4 +1,5 @@
 from src.mongo.models.candidacies_models import Candidacy, CandidacyStatus, Election
+from src.mongo.models.verifications_models import NewsVerification
 
 
 class ContextBuilder:
@@ -63,6 +64,23 @@ class ContextBuilder:
         if not self.__context_dict["candidacies"]:
             del self.__context_dict["candidacies"]
 
+    def add_news_verifications(self, news_verifications: list[NewsVerification]):
+        if "news_verifications" not in self.__context_dict:
+            self.__context_dict["news_verifications"] = []
+        for new in news_verifications:
+            item = f"### {new.title}\n\n"
+            item += f"**Fecha** {new.publication_date.strftime('%a, %m/%d/%Y - %H:%M')} "
+            item += f"**Posted in** [{new.classified_as}]({new.section_url})\n\n"
+            item += f"_{new.summary}_\n\n"
+            item += f"{new.body}\n\n"
+            item += f"**Fuente principal** {new.url}\n\n"
+            tags = " ".join([f"[{tag.name}]({tag.url})" for tag in new.tags])
+            item += f"**Tags** {tags}"
+            self.__context_dict["news_verifications"].append(item)
+
+        if not self.__context_dict["news_verifications"]:
+            del self.__context_dict["news_verifications"]
+
     def build_context(self) -> str:
         """Build and return the complete context string.
 
@@ -82,9 +100,15 @@ class ContextBuilder:
         if "candidacies" in self.__context_dict:
             context += "## Candidaturas\n\n"
             context += "\n\n".join(self.__context_dict["candidacies"])
+            context += "\n\n"
+
+        if "news_verifications" in self.__context_dict:
+            context += "## Verificaciones de Noticias\n\n"
+            context += "\n\n".join(self.__context_dict["news_verifications"])
+            context += "\n\n"
 
         if "not_found" in self.__context_dict:
-            context += "\n\n## No encontrado\n\n"
+            context += "## No encontrado\n\n"
             context += "\n\n".join(self.__context_dict["not_found"])
             context += "\n\n"
 

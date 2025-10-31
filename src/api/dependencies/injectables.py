@@ -15,6 +15,7 @@ from src.agent.commands import (
     AsyncClassifyTopic,
     AsyncRAGRetrieve,
     BuildCandidaciesContext,
+    BuildNewsVerificatiosContext,
     BuildTopicContext,
     SearchElection,
 )
@@ -82,10 +83,12 @@ def get_rag_engine(
     return AsyncRAGRetrieve(vector_db=vector_db)
 
 
-def get_topic_prompt_builder(db: "MongoDBDep", search_election: "SearchElectionDep"):
+def get_topic_prompt_builder(
+    db: "MongoDBDep", vector_db: "VectorDBDep", search_election: "SearchElectionDep"
+):
     build_topic_prompts = BuildTopicContext(
         {
-            # Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosPrompt(db),
+            Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosContext(vector_db),
             Topic.CANDIDACIES: BuildCandidaciesContext(db, search_election),
             # Topic.GOVERNMENT_PROPOSALS: BuildGenericPrompt(),
             # Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),

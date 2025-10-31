@@ -74,8 +74,8 @@ class AsyncAgent:
 
             context_messages = [
                 SystemMessage(content=prompt),
-                SystemMessage(content=topic_selections[0].description),
                 HumanMessage(content=topic_selections[0].user_query),
+                SystemMessage(content=topic_selections[0].description),
             ]
 
             async for chunk in self.chat_model.astream(context_messages):
@@ -120,8 +120,8 @@ class AsyncAgent:
         )
         context_messages = [
             SystemMessage(content=prompt),
-            SystemMessage(content=topic_selections[0].description),
             HumanMessage(content=topic_selections[0].user_query),
+            SystemMessage(content=topic_selections[0].description),
         ]
         output = await self.chat_model.ainvoke(context_messages)
         return str(output.content)

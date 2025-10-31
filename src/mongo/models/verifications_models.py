@@ -13,6 +13,7 @@ class NewsTag(BaseModel):
 
 
 class NewsVerification(MongoModel):
+    __collection_name__ = "news_verifications"
     title: str
     classified_as: str
     section_url: str
