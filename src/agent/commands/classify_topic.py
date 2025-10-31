@@ -52,7 +52,7 @@ class AsyncClassifyTopic(AsyncCommand):
                 "messages": [HumanMessage(content=completed_query)],
             }
         )
-        if isinstance(topics, dict):
+        if not isinstance(topics, list):
             raise ValueError("No su pudo identificar el tema de la solicitud")
 
         topics_selections: list[TopicSelection] = []
