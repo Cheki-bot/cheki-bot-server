@@ -35,6 +35,7 @@ class ContextBuilder:
         """
         self.__context_dict["election"] = []
         item = f"### {election.name} ({election.active_round})\n\n"
+        item += f"ID: {election.id}\n\n"
         item += f"Fecha de elección: {election.election_date}\n\n"
         item += f"{election.description}\n\n"
         item += f"Fuente: {election.source}"
@@ -44,7 +45,7 @@ class ContextBuilder:
             item += f"\n\nResultados de las elecciones: \n{election.result}"
         self.__context_dict["election"].append(item)
 
-    def add_candidacies(self, candidacies: list[Candidacy]) -> None:
+    def add_candidacies(self, candidacies: list[Candidacy], include_gov_plan: bool = False) -> None:
         """Add candidacy information to the context.
 
         Args:
@@ -54,12 +55,20 @@ class ContextBuilder:
             self.__context_dict["candidacies"] = []
 
         for candidacy in candidacies:
-            item = f"- {candidacy.party.name} ({candidacy.party.sigla})"
+            item = f"- {candidacy.party.name} ({candidacy.party.sigla}) ID de la elección: {candidacy.election_id}"
             if CandidacyStatus(candidacy.status) is not CandidacyStatus.ACTIVE:
                 item += f" ({candidacy.status})"
             for candidate in candidacy.candidates:
                 item += f"\n\t- {candidate.full_name} - {candidate.position}"
                 item += "" if candidate.is_active else " (inativo)"
+            if include_gov_plan and CandidacyStatus(candidacy.status) is CandidacyStatus.ACTIVE:
+                item += (
+                    f"\n\tPlan de gobierno de ({candidacy.party.name} - {candidacy.party.sigla}):\n"
+                )
+                item += (
+                    f"```txt\n{candidacy.government_plan.strip()}\n\tFuente: {candidacy.source}```"
+                )
+
             self.__context_dict["candidacies"].append(item)
         if not self.__context_dict["candidacies"]:
             del self.__context_dict["candidacies"]

@@ -123,26 +123,6 @@ def load_candidates():
     can_coll = db.get_collection("candidacies")
     ele_call = db.get_collection("elections")
 
-    candidates = TypeAdapter(list[Candidacy]).validate_python(can_coll.find({}))
-    elections = TypeAdapter(list[Election]).validate_python(ele_call.find({}))
-
-    base_metadata = {"collection_name": "candidacies", "topic": Topic.CANDIDACIES.value}
-
-    all_documents = []
-    for election in elections:
-        content = sanitize_text_input(
-            (f"candidatos en las {election.name} {election.active_round} {election.status}")
-        )
-        document = Document(
-            content,
-            metadata={
-                **base_metadata,
-                "data_id": election.id,
-                "collection_name": Election.__collection_name__,
-            },
-        )
-        all_documents.append(document)
-
     headers_to_split_on = [
         ("#", "Header 1"),
         ("##", "Header 2"),
@@ -152,34 +132,60 @@ def load_candidates():
 
     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
 
-    for candidacy in candidates:
-        metadata = {"data_id": candidacy.id, **base_metadata}
+    elections = TypeAdapter(list[Election]).validate_python(ele_call.find({}))
 
-        content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
-        content = sanitize_text_input(content)
+    all_documents = []
+    for election in elections:
+        content = sanitize_text_input(
+            (f"candidatos en las {election.name} {election.active_round} {election.status}")
+        )
+        metadata = {
+            "data_id": election.id,
+            "topic": Topic.CANDIDACIES.value,
+            "collection_name": Election.__collection_name__,
+        }
+        document = Document(content, metadata=metadata)
+        all_documents.append(document)
 
-        all_documents.append(Document(content, metadata=metadata))
-        for politician in candidacy.candidates:
-            content = f"{politician.full_name} como {politician.position}"
+        candidates = TypeAdapter(list[Candidacy]).validate_python(
+            can_coll.find({"election_id": election.id})
+        )
+
+        for candidacy in candidates:
+            metadata = {
+                "data_id": candidacy.id,
+                "topic": Topic.CANDIDACIES.value,
+                "collection_name": Candidacy.__collection_name__,
+                "election_id": election.id,
+            }
+
+            content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
+            content = sanitize_text_input(content)
+
             all_documents.append(Document(content, metadata=metadata))
 
-        gov_program_docs = markdown_splitter.split_text(candidacy.government_plan)
-        metadata = {
-            "data_id": candidacy.id,
-            **base_metadata,
-            "topic": Topic.GOVERNMENT_PROPOSALS.value,
-        }
+            for politician in candidacy.candidates:
+                content = f"{politician.full_name} como {politician.position}"
+                all_documents.append(Document(content, metadata=metadata))
 
-        for doc in gov_program_docs:
-            if len(encoding.encode(doc.page_content)) > 1000:
-                sub_docs = splitter.split_documents([doc])
-            else:
-                sub_docs = [doc]
+            gov_program_docs = markdown_splitter.split_text(candidacy.government_plan)
 
-            for sub_doc in sub_docs:
-                content = "\n".join([v for v in sub_doc.metadata.values()])
-                content = f"{content}\n\n{sub_doc.page_content}"
-                all_documents.append(Document(page_content=content, metadata=metadata))
+            metadata = {
+                **metadata,
+                "data_id": candidacy.id,
+                "topic": Topic.GOVERNMENT_PROPOSALS.value,
+            }
+
+            for doc in gov_program_docs:
+                if len(encoding.encode(doc.page_content)) > 1000:
+                    sub_docs = splitter.split_documents([doc])
+                else:
+                    sub_docs = [doc]
+
+                for sub_doc in sub_docs:
+                    content = "\n".join([v for v in sub_doc.metadata.values()])
+                    content = f"{content}\n\n{sub_doc.page_content}"
+                    all_documents.append(Document(page_content=content, metadata=metadata))
 
     return all_documents
 

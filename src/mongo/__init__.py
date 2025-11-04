@@ -12,7 +12,6 @@ db: Optional[Database] = None
 def init_mongo():
     client = MongoClient(ENV.mongo.uri)
     db = client.get_database(ENV.mongo.db_name)
-    print("MongoDB connected successfully")
     return client, db
 
 
@@ -20,7 +19,6 @@ def close_mongo():
     global client
     if client:
         client.close()
-        print("MongoDB connection closed")
 
 
 async def get_async_mongo_db() -> AsyncGenerator[Database, None]:

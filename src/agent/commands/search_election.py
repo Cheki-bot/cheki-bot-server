@@ -12,7 +12,7 @@ from pydantic import TypeAdapter
 
 from src.agent.context_managers.prompts import SEARCH_ELECTION_PROMPT
 from src.agent.interfaces.command import AsyncCommand
-from src.agent.schemas import TopicSelection
+from src.agent.schemas import Topic, TopicSelection
 from src.core.tools import get_bo_current_datetime_str
 from src.mongo.models.candidacies_models import Election
 
@@ -28,14 +28,18 @@ class SearchElection(AsyncCommand):
     def chain(self) -> RunnableSerializable:
         if self.__chain:
             return self.__chain
+
         json_parser = JsonOutputParser()
+
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", SEARCH_ELECTION_PROMPT),
                 MessagesPlaceholder(variable_name="messages"),
             ]
         )
+
         self.__chain = prompt | self.__chat_model | json_parser
+
         return self.__chain
 
     async def __get_elections(
@@ -51,7 +55,7 @@ class SearchElection(AsyncCommand):
             search_kwargs={
                 "k": 2,
                 "pre_filter": {
-                    "topic": topic_selection.topic.value,
+                    "topic": Topic.CANDIDACIES,
                     "collection_name": Election.__collection_name__,
                 },
             }
@@ -85,9 +89,8 @@ class SearchElection(AsyncCommand):
         if not elections:
             obj = self.__db["elections"].find_one({}, sort={"election_date": -1})
             return Election.model_validate(obj)
-        elections_list = "\n".join(
-            [f"{str(e.id)} - {e.name} - {e.election_date}" for e in elections]
-        )
+
+        elections_list = "\n".join([e.model_dump_json() for e in elections])
 
         res = self.chain.invoke(
             {

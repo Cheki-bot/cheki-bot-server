@@ -91,6 +91,7 @@ def fill_candidacies() -> int:
             if gp.get("status") == "no participa"
             else CandidacyStatus.ACTIVE,
             government_plan=text,
+            source=gp.get("source", ""),
             election_id=PyObjectId(first_election_id),
         )
 

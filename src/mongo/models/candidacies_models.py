@@ -45,6 +45,7 @@ class Candidacy(MongoModel):
     status: CandidacyStatus = Field(default=CandidacyStatus.ACTIVE)
     government_plan: str  # in Markdown
     election_id: PyObjectId = Field(alias="election_id")
+    source: str = Field("")
 
 
 class Election(MongoModel):

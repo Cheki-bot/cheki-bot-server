@@ -15,13 +15,14 @@ from src.agent.commands import (
     AsyncClassifyTopic,
     AsyncRAGRetrieve,
     BuildCandidaciesContext,
+    BuildGovernmentPlansContext,
     BuildNewsVerificatiosContext,
     BuildTopicContext,
     SearchElection,
 )
 from src.agent.schemas import Topic
-from src.core.config import settings
 from src.mongo import get_async_mongo_db
+from src.mongo.consts import FILTERS
 
 
 def get_chat_model():
@@ -57,8 +58,9 @@ def get_embedding_model():
 def get_topic_selector() -> AsyncClassifyTopic:
     return AsyncClassifyTopic(
         model=ChatOpenAI(
-            model=settings.llm.model,
-            temperature=0.1,
+            model="gpt-5-nano",
+            reasoning_effort="minimal",
+            temperature=0.0,
             api_key=ENV.llm.api_key,
         )
     )
@@ -71,9 +73,7 @@ def get_mongo_vdb(emb_model: "EmbeddingModelDep", db: "MongoDBDep") -> VectorSto
         index_name=ENV.mongo.index_name,
         relevance_score_fn="cosine",
     )
-    vector_db.create_vector_search_index(
-        ENV.mongo.dimensions, ["type", "collection_name", "topic", "data_id"]
-    )
+    vector_db.create_vector_search_index(ENV.mongo.dimensions, FILTERS)
     return vector_db
 
 
@@ -90,7 +90,7 @@ def get_topic_prompt_builder(
         {
             Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosContext(vector_db),
             Topic.CANDIDACIES: BuildCandidaciesContext(db, search_election),
-            # Topic.GOVERNMENT_PROPOSALS: BuildGenericPrompt(),
+            Topic.GOVERNMENT_PROPOSALS: BuildGovernmentPlansContext(vector_db, search_election),
             # Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),
             # Topic.QUESTIONS_AND_ANSWERS: BuildGenericPrompt(),
             # Topic.CAPABILITIES: BuildGenericPrompt(),

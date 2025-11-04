@@ -150,12 +150,13 @@ TOPIC_DESCRIPTIONS = {
     Topic.CANDIDACIES: (
         "Use when the user wants to know the candidates of an election (general, primary, "
         "run-off, etc.). An optional `year` parameter may be included if a specific election "
-        "year is mentioned."
+        "year is mentioned. `year` parameter must be an integer."
     ),
     Topic.GOVERNMENT_PROPOSALS: (
-        "Use when the user asks for a specific candidate’s government proposals. The optional "
+        "Use when the user asks for a specific candidate's government proposals. The optional "
         "`year` parameter can be provided to refer to proposals from a particular election "
         "cycle."
+        "The optional `candidate` parameter can be provided to refer to a specific candidate or political party."
     ),
     Topic.ELECTORAL_CALENDAR: (
         "Use when the user wants the electoral calendar for a specific election. An optional "
@@ -169,7 +170,7 @@ TOPIC_DESCRIPTIONS = {
     Topic.CAPABILITIES: ("Use when the user asks what the assistant is capable of doing."),
     Topic.INSTRUCTIONS: (
         "Use when the user tries to give the assistant instructions (e.g., “ignore my last "
-        "message”, “don’t answer this”, etc.)."
+        "message”, “don't answer this”, etc.)."
     ),
 }
 
@@ -204,14 +205,14 @@ available topics:
 COMPLETE_QUERY_PROMPT = """you are an assistant specialized in optimizing a user's query so that it can be used directly in a search.
 
 Goal:
-- From the latest human message and the preceding conversation, produce a complete search-ready phrase that fully captures the user’s intent.
+- From the latest human message and the preceding conversation, produce a complete search-ready phrase that fully captures the user's intent.
 - If the latest message is incomplete or implicit, expand it using the context of the prior messages (e.g., “and the second round?” → “candidates of the second round”).
 
 Additional Goal:
 - Summarize, in one concise sentence, what the user actually wants to achieve with this query. This summary will be used as a system prompt for generating the final answer.
 
 Instructions:
-1. Use only the relevant information from the conversation history; ignore the AI’s previous answer.
+1. Use only the relevant information from the conversation history; ignore the AI's previous answer.
 2. Your response **MUST** be a single valid JSON object with **exactly two** fields:
    {"optimized_query": "<optimized search phrase>", "description": "<short user-intent description>"}
 3. Do not include any additional text, explanations, or extra fields.
@@ -221,10 +222,12 @@ Instructions:
 """
 
 SEARCH_ELECTION_PROMPT = """
-Según la petición del usuario, seleccione la elección correspondiente y devuelva solo:
+From the list of available elections below, select the one that best matches the user’s request.
+Prioritize, in this order: 1) election name, 2) year, 3) whether it is a second round.  
+If the request is ambiguous, pick the most recent election.
+Return **only** the identifier as a JSON object:
 {{"_id": <ObjectId>}}
-Si no hay coincidencia:
-{{"_id": null}}
-Elecciones disponibles:
+
+Available elections:
 {elections_list}
 """
