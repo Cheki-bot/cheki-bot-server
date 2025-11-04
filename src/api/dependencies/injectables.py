@@ -14,8 +14,10 @@ from src.agent.commands import (
     AsyncClassifyTopic,
     AsyncRAGRetrieve,
     BuildCandidaciesContext,
+    BuildCapabilitiesContext,
     BuildGovernmentPlansContext,
     BuildNewsVerificatiosContext,
+    BuildQuestionsAndAnswersContext,
     BuildTopicContext,
     SearchElection,
 )
@@ -95,8 +97,8 @@ def get_topic_prompt_builder(
             Topic.CANDIDACIES: BuildCandidaciesContext(db, search_election),
             Topic.GOVERNMENT_PROPOSALS: BuildGovernmentPlansContext(vector_db, search_election),
             # Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),
-            # Topic.QUESTIONS_AND_ANSWERS: BuildGenericPrompt(),
-            # Topic.CAPABILITIES: BuildGenericPrompt(),
+            Topic.QUESTIONS_AND_ANSWERS: BuildQuestionsAndAnswersContext(vector_db),
+            Topic.CAPABILITIES: BuildCapabilitiesContext(),
         }
     )
     return build_topic_prompts

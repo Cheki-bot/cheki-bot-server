@@ -1,4 +1,5 @@
 from src.mongo.models.candidacies_models import Candidacy, CandidacyStatus, Election
+from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.models.verifications_models import NewsVerification
 
 
@@ -26,6 +27,20 @@ class ContextBuilder:
         if "not_found" not in self.__context_dict:
             self.__context_dict["not_found"] = []
         self.__context_dict["not_found"].append(msg)
+
+    def add_capabilities(self, text: str):
+        if "capabilities" not in self.__context_dict:
+            self.__context_dict["capabilities"] = []
+        self.__context_dict["capabilities"].append(f"- {text}")
+
+    def add_questions_and_answers(self, qas: list[QuestionsAndAnswers]):
+        if "qas" not in self.__context_dict:
+            self.__context_dict["qas"] = []
+
+        for qa in qas:
+            self.__context_dict["qas"].append(
+                f"**Pregunta:** {qa.question}\n**Respuesta:** {qa.answer}"
+            )
 
     def set_election(self, election: Election):
         """Set election information in the context.
@@ -114,6 +129,16 @@ class ContextBuilder:
         if "news_verifications" in self.__context_dict:
             context += "## Verificaciones de Noticias\n\n"
             context += "\n\n".join(self.__context_dict["news_verifications"])
+            context += "\n\n"
+
+        if "qas" in self.__context_dict:
+            context += "## Preguntas y respuestas\n\n"
+            context += "\n\n".join(self.__context_dict["qas"])
+            context += "\n\n"
+
+        if "capabilities" in self.__context_dict:
+            context += "## Tus capacidades como asistente\n\n"
+            context += "\n".join(self.__context_dict["capabilities"])
             context += "\n\n"
 
         if "not_found" in self.__context_dict:

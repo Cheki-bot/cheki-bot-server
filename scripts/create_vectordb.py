@@ -192,14 +192,14 @@ def load_candidates():
 
 def load_questions_and_answers():
     db = get_mongo_db()
-    collection = db["questions_and_answers"]
+    collection = db[QuestionsAndAnswers.__collection_name__]
     cursor = collection.find({})
     questions_and_answers = TypeAdapter(list[QuestionsAndAnswers]).validate_python(cursor)
 
     documents = []
     base_metadata = {
         "topic": Topic.QUESTIONS_AND_ANSWERS.value,
-        "collection_name": "questions_and_answers",
+        "collection_name": QuestionsAndAnswers.__collection_name__,
     }
     for qa in questions_and_answers:
         question = sanitize_text_input(qa.question)
