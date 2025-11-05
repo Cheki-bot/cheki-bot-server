@@ -14,6 +14,7 @@ class CalendarSignature(BaseModel):
 
 
 class CalendarEvent(MongoModel):
+    __collection_name__ = "calendar_events"
     scenery: str
     no: int
     activity: str
@@ -27,6 +28,7 @@ class CalendarEvent(MongoModel):
 
 
 class ElectoralCalendar(MongoModel):
+    __collection_name__ = "calendars"
     pdf_url: str
     title: str
     resolution: str

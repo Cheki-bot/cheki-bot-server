@@ -13,7 +13,7 @@ from pydantic import TypeAdapter
 from src.agent.context_managers.prompts import SEARCH_ELECTION_PROMPT
 from src.agent.interfaces.command import AsyncCommand
 from src.agent.schemas import Topic, TopicSelection
-from src.core.tools import get_bo_current_datetime_str
+from src.core.tools import get_bo_current_datetime, get_bo_current_datetime_str
 from src.mongo.models.candidacies_models import Election
 
 
@@ -48,12 +48,12 @@ class SearchElection(AsyncCommand):
         year: Optional[str] = None,
     ) -> list[Election]:
         if not year:
-            cursor = self.__db["elections"].find().sort("election_date").limit(2)
+            cursor = self.__db["elections"].find().sort("election_date").limit(9)
             return TypeAdapter(list[Election]).validate_python(cursor)
 
         retriever = self.__vec_db.as_retriever(
             search_kwargs={
-                "k": 2,
+                "k": 9,
                 "pre_filter": {
                     "topic": Topic.CANDIDACIES,
                     "collection_name": Election.__collection_name__,
@@ -107,7 +107,9 @@ class SearchElection(AsyncCommand):
         return Election.model_validate(obj) if obj else None
 
     async def run(self, topic_selection: TopicSelection) -> Optional[Election]:
-        year = topic_selection.params.get("year")
+        year = str(topic_selection.params.get("year", ""))
+        if not year.isnumeric():
+            year = str(get_bo_current_datetime().year)
         elections = await self.__get_elections(topic_selection, year)
         election = self.__select_election(elections, topic_selection.optimized_query)
         return election

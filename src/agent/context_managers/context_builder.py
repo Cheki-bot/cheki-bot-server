@@ -1,3 +1,4 @@
+from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
 from src.mongo.models.candidacies_models import Candidacy, CandidacyStatus, Election
 from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.models.verifications_models import NewsVerification
@@ -104,6 +105,36 @@ class ContextBuilder:
 
         if not self.__context_dict["news_verifications"]:
             del self.__context_dict["news_verifications"]
+
+    def add_calendars(self, calendars: list[ElectoralCalendar]):
+        if "calendars" not in self.__context_dict:
+            self.__context_dict["calendars"] = []
+        for calendar in calendars:
+            item = f"### {calendar.title} - De la elección: {calendar.election_id}\n\n"
+            item += f"**Fecha** {calendar.date.strftime('%a, %m/%d/%Y - %H:%M')}\n"
+            item += f"**resolution** {calendar.resolution}\n"
+            item += f"**Enlace** {calendar.pdf_url}\n"
+            item += f"{calendar.introduction}\n"
+            item += "**Firmas**\n"
+            for signature in calendar.signatures:
+                item += f"- {signature.full_name} - {signature.position}"
+            self.__context_dict["calendars"].append(item)
+
+    def add_events(self, events: list[CalendarEvent]):
+        if "events" not in self.__context_dict:
+            self.__context_dict["events"] = []
+        for event in events:
+            scenery = event.scenery if event.scenery != "main" else "Principal\n"
+            item = f"### {event.activity} - Del calendario: {event.calendar_id}\n\n"
+            item += f"**No.** {event.no}\n"
+            item += f"**Escenario** {scenery}\n"
+            item += f"**Días** (antes o despues de las elecciones) {event.days}\n"
+            item += f"**Desde** {event.from_date.strftime('%a, %m/%d/%Y - %H:%M')}\n"
+            item += f"**Hasta** {event.to_date.strftime('%a, %m/%d/%Y - %H:%M')}\n"
+            item += f"**Duración** {event.duration} días\n"
+            item += f"**Referencia** {event.reference}\n\n"
+            item += f"**Plazo** {event.place}"
+            self.__context_dict["events"].append(item)
 
     def build_context(self) -> str:
         """Build and return the complete context string.

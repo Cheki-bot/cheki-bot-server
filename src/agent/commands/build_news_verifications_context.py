@@ -8,6 +8,7 @@ from pymongo.database import Database
 from src.agent.context_managers.context_builder import ContextBuilder
 from src.agent.interfaces import BuildContext
 from src.agent.schemas import TopicSelection
+from src.core.tools import get_bo_current_datetime
 from src.mongo.models import NewsVerification
 
 
@@ -40,10 +41,12 @@ class BuildNewsVerificatiosContext(BuildContext):
         }
         filters: dict = {"_id": {"$in": list(ids)}}
 
-        year = topic_selection.params.get("year")
+        year_str = str(topic_selection.params.get("year", ""))
+        year = int(year_str) if year_str.isnumeric() else get_bo_current_datetime().year
+
         if year:
-            from_date = datetime(int(year), 1, 1)
-            to_date = datetime(int(year), 12, 31)
+            from_date = datetime(year, 1, 1)
+            to_date = datetime(year, 12, 31)
 
             filters.update({"publication_date": {"$gte": from_date, "$lte": to_date}})
 

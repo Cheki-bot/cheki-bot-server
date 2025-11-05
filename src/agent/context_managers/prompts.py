@@ -151,7 +151,7 @@ TOPIC_DESCRIPTIONS = {
     Topic.CANDIDACIES: (
         "Use when the user wants to know the candidates of an election (general, primary, "
         "run-off, etc.). An optional `year` parameter may be included if a specific election "
-        "year is mentioned. `year` parameter must be an integer."
+        "year is mentioned. `year` parameter must be an integer, for example: 2025."
     ),
     Topic.GOVERNMENT_PROPOSALS: (
         "Use when the user asks for a specific candidate's government proposals. The optional "
@@ -160,8 +160,10 @@ TOPIC_DESCRIPTIONS = {
         "The optional `candidate` parameter can be provided to refer to a specific candidate or political party."
     ),
     Topic.ELECTORAL_CALENDAR: (
-        "Use when the user wants the electoral calendar for a specific election. An optional "
-        "`year` parameter may be supplied to indicate the election year."
+        "Use when the user wants the electoral calendar for a specific election. "
+        "The optional parameters `start_date` and `end_date` can be provided in ISO format "
+        "to indicate the date range of calendar events. If the user specifies both dates, "
+        "or if they only mention one date, generate `start_date` 1 month before the date and `end_date` 1 month after the date."
     ),
     Topic.QUESTIONS_AND_ANSWERS: (
         "Use for general questions about the electoral process (how to vote, deadlines, "
@@ -183,7 +185,7 @@ TOPICS = "\n".join(
 TOPIC_SELECTION_PROMPT = f"""You are an intelligent agent that receives a **search-optimized query** (the value of the key `optimized_query`) and must:
 
 1. **Identify the main topic** of the query from the predefined list below.
-2. **Extract any relevant parameters** (e.g., `year`) that appear in the query.
+2. **Extract any relevant parameters** (e.g., `year`, `start_date`, `end_date`, `candidate`) that appear in the query.
 3. Return **exactly one JSON array** containing **between 1 and 3 objects**.  
    Each object must have the following structure:
 4. Always include QUESTIONS_AND_ANSWERS as an additional topic.

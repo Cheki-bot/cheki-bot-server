@@ -16,13 +16,14 @@ def sanitize_text_input(text: str) -> str:
     return text
 
 
-def get_current_datetime():
-    return datetime.now()
+def get_bo_current_datetime():
+    bo_tz = pytz.timezone("America/La_Paz")
+    dt_bo = bo_tz.localize(datetime.now())
+    return dt_bo
 
 
 def get_bo_current_datetime_str():
-    bo_tz = pytz.timezone("America/La_Paz")
-    dt_bo = bo_tz.localize(get_current_datetime())
+    dt_bo = get_bo_current_datetime()
     return dt_bo.strftime("%d/%m/%Y %H:%M:%S")
 
 

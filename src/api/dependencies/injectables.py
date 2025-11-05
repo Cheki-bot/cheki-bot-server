@@ -13,6 +13,7 @@ from src.agent.agent import AsyncAgent
 from src.agent.commands import (
     AsyncClassifyTopic,
     AsyncRAGRetrieve,
+    BuildCalendarContext,
     BuildCandidaciesContext,
     BuildCapabilitiesContext,
     BuildGovernmentPlansContext,
@@ -96,7 +97,7 @@ def get_topic_prompt_builder(
             Topic.VERIFICATION_OF_NEWS: BuildNewsVerificatiosContext(vector_db),
             Topic.CANDIDACIES: BuildCandidaciesContext(db, search_election),
             Topic.GOVERNMENT_PROPOSALS: BuildGovernmentPlansContext(vector_db, search_election),
-            # Topic.ELECTORAL_CALENDAR: BuildGenericPrompt(),
+            Topic.ELECTORAL_CALENDAR: BuildCalendarContext(vector_db, search_election),
             Topic.QUESTIONS_AND_ANSWERS: BuildQuestionsAndAnswersContext(vector_db),
             Topic.CAPABILITIES: BuildCapabilitiesContext(),
         }

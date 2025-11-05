@@ -84,11 +84,14 @@ def load_elections():
 
 def load_calendar_metadata():
     db = get_mongo_db()
-    collection = db["calendars"]
+    collection = db[ElectoralCalendar.__collection_name__]
 
     documents = []
 
-    base_metadata = {"topic": Topic.ELECTORAL_CALENDAR.value, "collection_name": "calendars"}
+    base_metadata = {
+        "topic": Topic.ELECTORAL_CALENDAR.value,
+        "collection_name": ElectoralCalendar.__collection_name__,
+    }
 
     for calendar in TypeAdapter(list[ElectoralCalendar]).validate_python(collection.find()):
         title = sanitize_text_input(calendar.title)
@@ -104,17 +107,18 @@ def load_calendar_metadata():
 
 def load_calendar_events():
     db = get_mongo_db()
-    collection = db["calendar_events"]
+    collection = db[CalendarEvent.__collection_name__]
     events = TypeAdapter(list[CalendarEvent]).validate_python(collection.find())
 
     documents = []
-    base_metadata = {"topic": Topic.ELECTORAL_CALENDAR.value, "collection_name": "calendar_events"}
+    base_metadata = {
+        "topic": Topic.ELECTORAL_CALENDAR.value,
+        "collection_name": CalendarEvent.__collection_name__,
+    }
     for event in events:
         activity = sanitize_text_input(event.activity)
-
-        documents.append(
-            Document(page_content=activity, metadata={"data_id": event.id, **base_metadata})
-        )
+        metadata = {"data_id": event.id, "calendar_id": event.calendar_id, **base_metadata}
+        documents.append(Document(page_content=activity, metadata=metadata))
     return documents
 
 
