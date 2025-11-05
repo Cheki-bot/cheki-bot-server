@@ -177,5 +177,16 @@ class ContextBuilder:
             context += "\n\n".join(self.__context_dict["not_found"])
             context += "\n\n"
 
+        if "calendars" in self.__context_dict:
+            context += "## Calendarios\n\n"
+            context += "\n\n".join(self.__context_dict["calendars"])
+            context += "\n\n"
+
+        if "events" in self.__context_dict:
+            context += "## Eventos del calendario\n\n"
+            for topic in self.__context_dict["events"]:
+                context += f"- {topic}\n"
+            context += "\n\n"
+
         self.reset()
         return context

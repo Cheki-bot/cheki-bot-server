@@ -100,6 +100,7 @@ def get_topic_prompt_builder(
             Topic.ELECTORAL_CALENDAR: BuildCalendarContext(vector_db, search_election),
             Topic.QUESTIONS_AND_ANSWERS: BuildQuestionsAndAnswersContext(vector_db),
             Topic.CAPABILITIES: BuildCapabilitiesContext(),
+            Topic.INSTRUCTIONS: BuildCapabilitiesContext(),
         }
     )
     return build_topic_prompts
