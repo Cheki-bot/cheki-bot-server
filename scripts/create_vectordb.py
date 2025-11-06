@@ -69,7 +69,7 @@ def load_elections():
     collection = db["elections"]
 
     elections = TypeAdapter(list[Election]).validate_python(collection.find())
-    base_metadata = {"collection_name": "elections"}
+    base_metadata = {"collection_name": Election.__collection_name__}
     documents = []
     for election in elections:
         name = sanitize_text_input(election.name)

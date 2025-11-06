@@ -7,6 +7,7 @@ from src.agent.schemas import Topic
 from src.api.schemas import RecordData
 from src.core.config import settings
 from src.core.tools import sanitize_text_input
+from src.mongo.models.candidacies_models import Election
 from src.mongo.models.verifications_models import NewsVerification
 
 
@@ -22,11 +23,18 @@ class IndexingService:
     def vector_db(self):
         return self.__vector_db
 
-    def __index_new_verification(self, data: RecordData) -> list[Document]:
+    def __find_record(self, data: RecordData):
         record = self.db[data.collection_name].find_one({"_id": ObjectId(data.id)})
-
         if record is None:
-            raise HTTPException(status_code=404, detail="Record not found")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Record with ID {data.id} not found in collection {data.collection_name}",
+            )
+
+        return record
+
+    def __index_new_verification(self, data: RecordData) -> list[Document]:
+        record = self.__find_record(data)
 
         verification = NewsVerification.model_validate(record)
 
@@ -46,8 +54,30 @@ class IndexingService:
         ]
         return documents
 
+    def __index_election(self, data: RecordData) -> list[Document]:
+        record = self.__find_record(data)
+        election = Election.model_validate(record)
+        metadata = {
+            "data_id": election.id,
+            "collection_name": Election.__collection_name__,
+        }
+        name = sanitize_text_input(election.name)
+        description = sanitize_text_input(election.description)
+        result = sanitize_text_input(election.description)
+        content = f"{name}\n\n{description}\n\n{result}\n"
+
+        document = Document(page_content=content, metadata=metadata)
+        return [document]
+
     async def index_record(self, data: RecordData):
-        indexers = {NewsVerification.__collection_name__: self.__index_new_verification}
+        indexers = {
+            NewsVerification.__collection_name__: self.__index_new_verification,
+            Election.__collection_name__: self.__index_election,
+            # Candidacy.__collection_name__: self.__index_candidacy,
+            # CalendarEvent.__collection_name__: self.__index_calendar_event,
+            # ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
+            # QuestionsAndAnswers.__collection_name__: self.__index_qa,
+        }
 
         if data.collection_name not in indexers:
             raise HTTPException(400, f"Collection {data.collection_name} not supported")  # type: ignore
