@@ -47,9 +47,9 @@ class TestAsyncClassifyTopic:
         # Mock the chain's ainvoke method to return valid responses
         optimized_query_result = {
             "optimized_query": "verify news authenticity",
-            "description": "User wants to verify news"
+            "description": "User wants to verify news",
         }
-        
+
         topics_result = [
             {
                 "topic": "VERIFICATION_OF_NEWS",
@@ -65,7 +65,10 @@ class TestAsyncClassifyTopic:
         classify_topic._AsyncClassifyTopic__chain = mock_chain
 
         # Create test messages
-        messages = [SystemMessage(content="You are a helpful assistant."), HumanMessage(content="Is this news real?")]
+        messages = [
+            SystemMessage(content="You are a helpful assistant."),
+            HumanMessage(content="Is this news real?"),
+        ]
 
         # Execute the method
         result = await classify_topic.run(messages)
@@ -89,9 +92,9 @@ class TestAsyncClassifyTopic:
         # Mock the chain's ainvoke method
         optimized_query_result = {
             "optimized_query": "election dates information",
-            "description": "User wants to know election dates"
+            "description": "User wants to know election dates",
         }
-        
+
         topics_result = [
             {
                 "topic": "ELECTORAL_CALENDAR",
@@ -136,9 +139,9 @@ class TestAsyncClassifyTopic:
         # Mock the chain's ainvoke method to return an invalid topic
         optimized_query_result = {
             "optimized_query": "Test optimized query",
-            "description": "User wants to test invalid topic"
+            "description": "User wants to test invalid topic",
         }
-        
+
         invalid_topics_result = [
             {
                 "topic": "INVALID_TOPIC",
@@ -166,9 +169,9 @@ class TestAsyncClassifyTopic:
         # Mock the chain's ainvoke method with minimal required fields only
         optimized_query_result = {
             "optimized_query": "capabilities query",
-            "description": "User wants to know capabilities"
+            "description": "User wants to know capabilities",
         }
-        
+
         minimal_topics_result = [
             {
                 "topic": "CAPABILITIES",
@@ -227,9 +230,9 @@ class TestAsyncClassifyTopic:
         for topic in Topic:
             optimized_query_result = {
                 "optimized_query": f"optimized query for {topic.value}",
-                "description": f"User query for {topic.value}"
+                "description": f"User query for {topic.value}",
             }
-            
+
             topics_result = [
                 {
                     "topic": topic.value,
@@ -275,9 +278,9 @@ class TestAsyncClassifyTopic:
         """Test run method when user sends instructions."""
         optimized_query_result = {
             "optimized_query": "instructions query",
-            "description": "User is sending instructions"
+            "description": "User is sending instructions",
         }
-        
+
         topics_result = [
             {
                 "topic": "INSTRUCTIONS",
@@ -311,9 +314,9 @@ class TestAsyncClassifyTopic:
         """Test run method when topic is classified as CANDIDACIES."""
         optimized_query_result = {
             "optimized_query": "candidates information",
-            "description": "User wants candidates information"
+            "description": "User wants candidates information",
         }
-        
+
         topics_result = [
             {
                 "topic": "CANDIDACIES",
@@ -347,9 +350,9 @@ class TestAsyncClassifyTopic:
         """Test run method when topic is classified as GOVERNMENT_PROPOSALS."""
         optimized_query_result = {
             "optimized_query": "government proposals information",
-            "description": "User wants government proposals"
+            "description": "User wants government proposals",
         }
-        
+
         topics_result = [
             {
                 "topic": "GOVERNMENT_PROPOSALS",
@@ -383,9 +386,9 @@ class TestAsyncClassifyTopic:
         """Test run method when topic is classified as VERIFICATION_OF_NEWS."""
         optimized_query_result = {
             "optimized_query": "verify news authenticity",
-            "description": "User wants to verify news"
+            "description": "User wants to verify news",
         }
-        
+
         topics_result = [
             {
                 "topic": "VERIFICATION_OF_NEWS",
@@ -419,9 +422,9 @@ class TestAsyncClassifyTopic:
         """Test run method when multiple topics are returned."""
         optimized_query_result = {
             "optimized_query": "election candidates and calendar",
-            "description": "User wants election candidates and calendar"
+            "description": "User wants election candidates and calendar",
         }
-        
+
         topics_result = [
             {
                 "topic": "CANDIDACIES",
@@ -430,7 +433,7 @@ class TestAsyncClassifyTopic:
             {
                 "topic": "ELECTORAL_CALENDAR",
                 "description": "Calendario electoral",
-            }
+            },
         ]
 
         # Create a mock chain

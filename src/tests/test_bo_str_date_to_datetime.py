@@ -22,7 +22,7 @@ def test_valid_date_formats():
         ("8 de noviembre de 2023", datetime(2023, 11, 8)),
         ("31 de diciembre de 2024", datetime(2024, 12, 31)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected
 
@@ -34,7 +34,7 @@ def test_case_insensitive():
         ("15 de Febrero de 2024", datetime(2024, 2, 15)),
         ("23 De MARZO de 2023", datetime(2023, 3, 23)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected
 
@@ -46,7 +46,7 @@ def test_single_digit_day():
         ("9 de febrero de 2024", datetime(2024, 2, 9)),
         ("1 de marzo de 2023", datetime(2023, 3, 1)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected
 
@@ -65,7 +65,7 @@ def test_whitespace_handling():
         ("1  de  enero  de  2023", datetime(2023, 1, 1)),
         ("1   de   enero   de   2023", datetime(2023, 1, 1)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected
 
@@ -79,7 +79,7 @@ def test_dates_with_day_names():
         ("lunes, 1 de enero de 2023", datetime(2023, 1, 1)),
         ("sábado, 15 de febrero de 2024", datetime(2024, 2, 15)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected
 
@@ -90,7 +90,7 @@ def test_invalid_date_format():
     # The regex pattern is: r"(\d{1,2})\s+de\s+([a-z]+)\s+de\s+(\d{4})"
     # This means it will match "1 de enero de 2023 extra" because it finds the pattern in the beginning
     # But it will NOT match "not a date" because it can't find the pattern
-    
+
     # These should raise ValueError because they don't match the pattern at all
     invalid_cases = [
         "not a date",
@@ -101,7 +101,7 @@ def test_invalid_date_format():
         "de enero de 2023",  # Missing day
         "1 de",  # Incomplete
     ]
-    
+
     for invalid_date in invalid_cases:
         with pytest.raises(ValueError, match=f"Invalid date format: {invalid_date}"):
             bo_str_date_to_datetime(invalid_date)
@@ -116,7 +116,7 @@ def test_invalid_month_name():
         "1 de marz de 2023",
         "1 de feb de 2023",  # Shortened month name
     ]
-    
+
     for invalid_month in invalid_month_cases:
         # These will raise ValueError, but not with the expected message format
         # because the error occurs in the months.index() call, not in the initial validation
@@ -136,7 +136,7 @@ def test_leap_year_handling():
     except ValueError:
         # If it fails, that's also acceptable behavior
         pass
-    
+
     # This should fail because 2023 is not a leap year
     with pytest.raises(ValueError):
         bo_str_date_to_datetime("29 de febrero de 2023")
@@ -156,7 +156,7 @@ def test_extra_text_in_string():
     # This is because re.search() matches anywhere in the string
     result = bo_str_date_to_datetime("1 de enero de 2023 extra text")
     assert result == datetime(2023, 1, 1)
-    
+
     result = bo_str_date_to_datetime("1 de enero de 2023 extra text here")
     assert result == datetime(2023, 1, 1)
 
@@ -169,6 +169,6 @@ def test_year_boundaries():
         ("1 de enero de 2000", datetime(2000, 1, 1)),
         ("15 de diciembre de 2023", datetime(2023, 12, 15)),
     ]
-    
+
     for date_str, expected in test_cases:
         assert bo_str_date_to_datetime(date_str) == expected

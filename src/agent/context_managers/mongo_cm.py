@@ -55,7 +55,9 @@ class MongoContextManager(ChromaContextManager):
             content.append(document.page_content)
         return "\n\n".join(content)
 
-    async def build_system_messages(self, queries: Sequence[BaseMessage]) -> Sequence[SystemMessage]:
+    async def build_system_messages(
+        self, queries: Sequence[BaseMessage]
+    ) -> Sequence[SystemMessage]:
         """Build a system message with contextual information from the vector database.
 
         Args:
@@ -100,42 +102,52 @@ class MongoContextManager(ChromaContextManager):
             best_match = str(max(content_type, key=lambda key: content_type.get(key, 0)))
 
         current_date = datetime.now(UTC)
-        date_str = current_date.astimezone(timezone(offset=timedelta(hours=-4), name="America/La_Paz")).strftime(
-            "%d de %B del %Y"
-        )
+        date_str = current_date.astimezone(
+            timezone(offset=timedelta(hours=-4), name="America/La_Paz")
+        ).strftime("%d de %B del %Y")
 
         system_prompts = [SystemMessage(content=CHAT_SYSTEM_PROMPT.format(date=date_str))]
 
         match best_match:
             case DocType.VERIFICATIONS.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 10, "pre_filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(
+                    search_kwargs={"k": 10, "pre_filter": {"type": best_match}}
+                )
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_verification(documents)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.GOV_PROGRAMS.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(
+                    search_kwargs={"k": 20, "pre_filter": {"type": best_match}}
+                )
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = GOV_PROGRAM_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR_META.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(
+                    search_kwargs={"k": 20, "pre_filter": {"type": best_match}}
+                )
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_METADATA_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CALENDAR.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(
+                    search_kwargs={"k": 20, "pre_filter": {"type": best_match}}
+                )
                 documents = await retriver.ainvoke(complete_context)
                 content = self.__format_content(documents)
                 content = CALENDAR_EVENT_PROMPT.format(content=content)
                 system_prompts.append(SystemMessage(content))
 
             case DocType.CANDIDATES.value:
-                retriver = self.vectorDB.as_retriever(search_kwargs={"k": 20, "pre_filter": {"type": best_match}})
+                retriver = self.vectorDB.as_retriever(
+                    search_kwargs={"k": 20, "pre_filter": {"type": best_match}}
+                )
                 documents = await retriver.ainvoke(complete_context)
                 content = ""
                 for doc in documents:
@@ -148,7 +160,11 @@ class MongoContextManager(ChromaContextManager):
             case DocType.Q_A.value:
                 retriver = self.vectorDB.as_retriever(
                     search_type="similarity_score_threshold",
-                    search_kwargs={"score_threshold": 0.1, "k": 1, "pre_filter": {"type": best_match}},
+                    search_kwargs={
+                        "score_threshold": 0.1,
+                        "k": 1,
+                        "pre_filter": {"type": best_match},
+                    },
                 )
                 query = queries[-1]
                 query_str = str(query.content) if len(queries) > 0 else ""  # type: ignore
@@ -156,7 +172,9 @@ class MongoContextManager(ChromaContextManager):
                 documents = await retriver.ainvoke(query_str)
                 content = ""
                 for doc in documents:
-                    content = f"Question: {doc.page_content}\nAnswer: {doc.metadata.get('answer', '')}\n"
+                    content = (
+                        f"Question: {doc.page_content}\nAnswer: {doc.metadata.get('answer', '')}\n"
+                    )
 
                 content = Q_A_PROMPT.format(question="query", content=content.strip())
                 system_prompts.append(SystemMessage(content))

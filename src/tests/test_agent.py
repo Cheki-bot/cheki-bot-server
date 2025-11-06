@@ -38,14 +38,16 @@ def agent(mock_chat_model, mock_classify_topic, mock_rag_retrieve, mock_build_to
 
 
 @pytest.mark.asyncio
-async def test_stream_success(agent, mock_chat_model, mock_classify_topic, mock_build_topic_context):
+async def test_stream_success(
+    agent, mock_chat_model, mock_classify_topic, mock_build_topic_context
+):
     query = "test query"
     topic_selection = TopicSelection(
         topic=Topic.GENERAL_INFO,
         description="User wants general information",
         user_query=query,
         optimized_query=query,
-        params={}
+        params={},
     )
     mock_classify_topic.return_value = [topic_selection]
     mock_build_topic_context.return_value = "test context"
@@ -72,14 +74,16 @@ async def test_stream_success(agent, mock_chat_model, mock_classify_topic, mock_
 
 
 @pytest.mark.asyncio
-async def test_stream_empty_query(agent, mock_chat_model, mock_classify_topic, mock_build_topic_context):
+async def test_stream_empty_query(
+    agent, mock_chat_model, mock_classify_topic, mock_build_topic_context
+):
     query = ""
     topic_selection = TopicSelection(
         topic=Topic.GENERAL_INFO,
         description="User wants general information",
         user_query=query,
         optimized_query=query,
-        params={}
+        params={},
     )
     mock_classify_topic.return_value = [topic_selection]
     mock_build_topic_context.return_value = "test context"
@@ -98,14 +102,16 @@ async def test_stream_empty_query(agent, mock_chat_model, mock_classify_topic, m
 
 
 @pytest.mark.asyncio
-async def test_stream_with_special_characters(agent, mock_chat_model, mock_classify_topic, mock_build_topic_context):
+async def test_stream_with_special_characters(
+    agent, mock_chat_model, mock_classify_topic, mock_build_topic_context
+):
     query = "test with special chars: !@#$%^&*()"
     topic_selection = TopicSelection(
         topic=Topic.GENERAL_INFO,
         description="User query with special characters",
         user_query=query,
         optimized_query=query,
-        params={}
+        params={},
     )
     mock_classify_topic.return_value = [topic_selection]
     mock_build_topic_context.return_value = "doc with special chars: !@#$%^"
@@ -124,14 +130,16 @@ async def test_stream_with_special_characters(agent, mock_chat_model, mock_class
 
 
 @pytest.mark.asyncio
-async def test_stream_handles_empty_history(agent, mock_chat_model, mock_classify_topic, mock_build_topic_context):
+async def test_stream_handles_empty_history(
+    agent, mock_chat_model, mock_classify_topic, mock_build_topic_context
+):
     query = "test"
     topic_selection = TopicSelection(
         topic=Topic.GENERAL_INFO,
         description="User wants general information",
         user_query=query,
         optimized_query=query,
-        params={}
+        params={},
     )
     mock_classify_topic.return_value = [topic_selection]
     mock_build_topic_context.return_value = "test context"
@@ -157,7 +165,7 @@ async def test_invoke_method(agent, mock_chat_model, mock_classify_topic, mock_b
         description="User wants general information",
         user_query=query,
         optimized_query=query,
-        params={}
+        params={},
     )
     mock_classify_topic.return_value = [topic_selection]
     mock_build_topic_context.return_value = "test context"
