@@ -1,3 +1,5 @@
+from typing import Callable
+
 import tiktoken
 from bson import ObjectId
 from fastapi import HTTPException
@@ -11,6 +13,7 @@ from src.core.config import settings
 from src.core.tools import sanitize_text_input
 from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
 from src.mongo.models.candidacies_models import Candidacy, Election
+from src.mongo.models.qa_model import QuestionsAndAnswers
 from src.mongo.models.verifications_models import NewsVerification
 
 
@@ -153,14 +156,25 @@ class IndexingService:
 
         return documents
 
+    def __index_qa(self, data: RecordData):
+        record = self.__find_record(data)
+        qa = QuestionsAndAnswers.model_validate(record)
+        metadata = {
+            "data_id": ObjectId(str(qa.id)),
+            "collection_name": QuestionsAndAnswers.__collection_name__,
+            "topic": Topic.QUESTIONS_AND_ANSWERS.value,
+        }
+        question = sanitize_text_input(qa.question)
+        return [Document(page_content=question, metadata=metadata)]
+
     async def index_record(self, data: RecordData):
-        indexers = {
+        indexers: dict[str, Callable[[RecordData], list[Document]]] = {
             NewsVerification.__collection_name__: self.__index_new_verification,
             Election.__collection_name__: self.__index_election,
             ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
             CalendarEvent.__collection_name__: self.__index_calendar_event,
             Candidacy.__collection_name__: self.__index_candidacy,
-            # QuestionsAndAnswers.__collection_name__: self.__index_qa,
+            QuestionsAndAnswers.__collection_name__: self.__index_qa,
         }
 
         if data.collection_name not in indexers:
