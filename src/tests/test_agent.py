@@ -70,7 +70,7 @@ async def test_stream_success(
     assert any(chunk.content == "Generando respuesta..." for chunk in result)
     assert any(chunk.content == "test response chunk 1" for chunk in result)
     assert any(chunk.content == "test response chunk 2" for chunk in result)
-    assert any(chunk.done == True for chunk in result)
+    assert any(chunk.done for chunk in result)
 
 
 @pytest.mark.asyncio
