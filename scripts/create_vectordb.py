@@ -72,7 +72,7 @@ def load_elections():
     base_metadata = {"collection_name": Election.__collection_name__}
     documents = []
     for election in elections:
-        name = sanitize_text_input(election.name)
+        name = sanitize_text_input(f"{election.name} {election.active_round} {election.status}")
         description = sanitize_text_input(election.description)
         result = sanitize_text_input(election.description)
         content = f"{name}\n\n{description}\n\n{result}\n"
@@ -140,17 +140,6 @@ def load_candidates():
 
     all_documents = []
     for election in elections:
-        content = sanitize_text_input(
-            (f"candidatos en las {election.name} {election.active_round} {election.status}")
-        )
-        metadata = {
-            "data_id": election.id,
-            "topic": Topic.CANDIDACIES.value,
-            "collection_name": Election.__collection_name__,
-        }
-        document = Document(content, metadata=metadata)
-        all_documents.append(document)
-
         candidates = TypeAdapter(list[Candidacy]).validate_python(
             can_coll.find({"election_id": election.id})
         )

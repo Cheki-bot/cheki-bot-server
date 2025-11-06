@@ -1,20 +1,39 @@
+import tiktoken
 from bson import ObjectId
 from fastapi import HTTPException
 from langchain_core.documents import Document
 from langchain_mongodb import MongoDBAtlasVectorSearch
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
 from src.agent.schemas import Topic
 from src.api.schemas import RecordData
 from src.core.config import settings
 from src.core.tools import sanitize_text_input
 from src.mongo.models.calendar_models import CalendarEvent, ElectoralCalendar
-from src.mongo.models.candidacies_models import Election
+from src.mongo.models.candidacies_models import Candidacy, Election
 from src.mongo.models.verifications_models import NewsVerification
 
 
 class IndexingService:
     def __init__(self, vector_db: MongoDBAtlasVectorSearch):
         self.__vector_db = vector_db
+
+        headers_to_split_on = [
+            ("#", "Header 1"),
+            ("##", "Header 2"),
+            ("###", "Header 3"),
+            ("####", "Header 4"),
+        ]
+        self.__encoding = tiktoken.encoding_for_model("text-embedding-3-small")
+        self.__markdown_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=headers_to_split_on
+        )
+        self.__splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,
+            chunk_overlap=100,
+            length_function=lambda text: len(self.__encoding.encode(text)),
+            separators=["\n\n", "\n", ". ", " ", ""],
+        )
 
     @property
     def db(self):
@@ -62,7 +81,7 @@ class IndexingService:
             "data_id": election.id,
             "collection_name": Election.__collection_name__,
         }
-        name = sanitize_text_input(election.name)
+        name = sanitize_text_input(f"{election.name} {election.active_round} {election.status}")
         description = sanitize_text_input(election.description)
         result = sanitize_text_input(election.description)
         content = f"{name}\n\n{description}\n\n{result}\n"
@@ -85,7 +104,7 @@ class IndexingService:
         content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
         return [Document(page_content=content, metadata=metadata)]
 
-    async def __index_calendar_event(self, data: RecordData):
+    def __index_calendar_event(self, data: RecordData):
         record = self.__find_record(data)
         event = CalendarEvent.model_validate(record)
         metadata = {
@@ -97,13 +116,50 @@ class IndexingService:
         activity = sanitize_text_input(event.activity)
         return [Document(page_content=activity, metadata=metadata)]
 
+    def __index_candidacy(self, data: RecordData):
+        record = self.__find_record(data)
+        candidacy = Candidacy.model_validate(record)
+
+        metadata = {
+            "data_id": candidacy.id,
+            "topic": Topic.CANDIDACIES.value,
+            "collection_name": Candidacy.__collection_name__,
+            "election_id": candidacy.election_id,
+        }
+
+        content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
+        content = sanitize_text_input(content)
+        documents = [Document(content, metadata=metadata)]
+
+        for politician in candidacy.candidates:
+            content = f"{politician.full_name} como {politician.position}"
+            documents.append(Document(content, metadata=metadata))
+        gov_program_docs = self.__markdown_splitter.split_text(candidacy.government_plan)
+        metadata = {
+            **metadata,
+            "topic": Topic.GOVERNMENT_PROPOSALS.value,
+        }
+
+        for doc in gov_program_docs:
+            if len(self.__encoding.encode(doc.page_content)) > 1000:
+                sub_docs = self.__splitter.split_documents([doc])
+            else:
+                sub_docs = [doc]
+
+            for sub_doc in sub_docs:
+                content = "\n".join([v for v in sub_doc.metadata.values()])
+                content = f"{content}\n\n{sub_doc.page_content}"
+                documents.append(Document(page_content=content, metadata=metadata))
+
+        return documents
+
     async def index_record(self, data: RecordData):
         indexers = {
             NewsVerification.__collection_name__: self.__index_new_verification,
             Election.__collection_name__: self.__index_election,
             ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
             CalendarEvent.__collection_name__: self.__index_calendar_event,
-            # Candidacy.__collection_name__: self.__index_candidacy,
+            Candidacy.__collection_name__: self.__index_candidacy,
             # QuestionsAndAnswers.__collection_name__: self.__index_qa,
         }
 
