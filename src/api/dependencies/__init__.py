@@ -4,16 +4,18 @@ from .injectables import (
     ChatModelDep,
     ClassifyTopicDep,
     EmbeddingModelDep,
+    IndexingServiceDep,
     MongoDBDep,
     RAGRetrieveDep,
 )
 
 __all__ = [
+    "AgentDep",
+    "BuildTopicPromptsDep",
     "ChatModelDep",
-    "EmbeddingModelDep",
     "ClassifyTopicDep",
+    "EmbeddingModelDep",
+    "IndexingServiceDep",
     "MongoDBDep",
     "RAGRetrieveDep",
-    "BuildTopicPromptsDep",
-    "AgentDep",
 ]

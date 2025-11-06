@@ -1,16 +1,11 @@
-import uuid
-from typing import TypedDict
-
 from fastapi import APIRouter
 
-webhook = APIRouter(prefix="/webhook", tags=["Webhook"])
+from src.api.dependencies import IndexingServiceDep
+from src.api.schemas import RecordData
+
+webhook_router = APIRouter(prefix="/webhook", tags=["Webhook"])
 
 
-class Metadata(TypedDict):
-    _id: uuid.UUID
-    topic: str
-
-
-@webhook.post("/")
-async def webhook_handler(metadata: dict):
-    pass
+@webhook_router.post("/")
+async def webhook_handler(data: RecordData, service: IndexingServiceDep):
+    return await service.index_record(data=data)

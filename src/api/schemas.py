@@ -27,3 +27,15 @@ class QueryRequest(BaseModel):
         examples=["Hola, como estas?"],
     )
     history: list[ChatMessage] = Field(..., max_length=50)
+
+
+class RecordData(BaseModel):
+    id: str = Field(
+        ...,
+        alias="_id",
+        description="The ID of the document (MongoDB ObjectID)",
+        examples=["64a9f1b2c5d6e7f8a9b0c1d2"],
+    )
+    collection_name: str = Field(
+        ..., description="The name of the collection", examples=["news_verifications"]
+    )
