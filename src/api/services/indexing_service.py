@@ -7,6 +7,7 @@ from src.agent.schemas import Topic
 from src.api.schemas import RecordData
 from src.core.config import settings
 from src.core.tools import sanitize_text_input
+from src.mongo.models.calendar_models import ElectoralCalendar
 from src.mongo.models.candidacies_models import Election
 from src.mongo.models.verifications_models import NewsVerification
 
@@ -69,13 +70,28 @@ class IndexingService:
         document = Document(page_content=content, metadata=metadata)
         return [document]
 
+    def __index_electoral_calendar(self, data: RecordData):
+        record = self.__find_record(data)
+        calendar = ElectoralCalendar.model_validate(record)
+        metadata = {
+            "data_id": calendar.id,
+            "topic": Topic.ELECTORAL_CALENDAR.value,
+            "collection_name": ElectoralCalendar.__collection_name__,
+        }
+        title = sanitize_text_input(calendar.title)
+        date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
+        resolution = sanitize_text_input(calendar.resolution)
+        introduction = sanitize_text_input(calendar.introduction or "")
+        content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
+        return [Document(page_content=content, metadata=metadata)]
+
     async def index_record(self, data: RecordData):
         indexers = {
             NewsVerification.__collection_name__: self.__index_new_verification,
             Election.__collection_name__: self.__index_election,
+            ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
             # Candidacy.__collection_name__: self.__index_candidacy,
             # CalendarEvent.__collection_name__: self.__index_calendar_event,
-            # ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
             # QuestionsAndAnswers.__collection_name__: self.__index_qa,
         }
 
