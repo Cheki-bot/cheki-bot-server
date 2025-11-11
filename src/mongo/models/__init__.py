@@ -9,6 +9,7 @@ from .candidacies_models import (
     Politician,
 )
 from .qa_model import QuestionsAndAnswers
+from .user_models import User
 from .verifications_models import NewsTag, NewsVerification
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "PoliticalParty",
     "Politician",
     "QuestionsAndAnswers",
+    "User",
 ]
