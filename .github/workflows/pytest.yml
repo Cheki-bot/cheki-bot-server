@@ -45,3 +45,4 @@ jobs:
           MONGO_INDEX_NAME: "search_index"
           MONGO_DIMENSIONS: "1536"
           MONGO_URI: "mongodb://username:password@localhost:27017/?directConnection=true"
+          SECRET_KEY: "supersecretkey"
