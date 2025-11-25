@@ -33,12 +33,13 @@ from src.mongo.models import User
 
 
 def get_chat_model():
-    params = dict(
-        model=settings.llm.model,
-        api_key=settings.llm.api_key,
-        temperature=settings.llm.temperature,
-        max_completion_tokens=settings.llm.max_tokens,
-    )
+    params = {
+        "model": settings.llm.model,
+        "api_key": settings.llm.api_key,
+        "temperature": settings.llm.temperature,
+        "max_completion_tokens": settings.llm.max_tokens,
+    }
+
     match settings.llm.provider:
         case "openai":
             return ChatOpenAI(**params)
@@ -48,16 +49,19 @@ def get_chat_model():
             raise NotImplementedError("Provider not supported")
 
 
-def get_embedding_model():
-    params = dict(
-        model=settings.llm.emb_model,
-        api_key=settings.llm.api_key,
-    )
+def get_embedding_model() -> Embeddings:
+    params = {
+        "model": settings.llm.emb_model,
+        "api_key": settings.llm.api_key,
+    }
     match settings.llm.provider:
         case "openai":
-            return OpenAIEmbeddings(**params)
+            return OpenAIEmbeddings(
+                model=settings.llm.emb_model,
+                api_key=settings.llm.api_key,
+            )
         case "nebius":
-            raise NebiusEmbeddings(**params)
+            return NebiusEmbeddings(**params)
         case _:
             raise NotImplementedError("Provider not supported")
 

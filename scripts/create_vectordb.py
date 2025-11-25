@@ -97,7 +97,7 @@ def load_calendar_metadata():
         title = sanitize_text_input(calendar.title)
         date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
         resolution = sanitize_text_input(calendar.resolution)
-        introduction = sanitize_text_input(calendar.introduction)
+        introduction = sanitize_text_input(calendar.introduction or "")
         content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
         metadata = {"data_id": calendar.id, **base_metadata}
         documents.append(Document(page_content=content, metadata=metadata))

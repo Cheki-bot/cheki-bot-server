@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 
 import tiktoken
 from bson import ObjectId
@@ -6,6 +6,8 @@ from fastapi import HTTPException
 from langchain_core.documents import Document
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+from pydantic import TypeAdapter
+from pymongo.database import Database
 
 from src.agent.schemas import Topic
 from src.api.schemas import RecordData
@@ -39,136 +41,154 @@ class IndexingService:
         )
 
     @property
-    def db(self):
+    def db(self) -> Database[dict[str, Any]]:
         return self.__vector_db.collection.database
 
     @property
     def vector_db(self):
         return self.__vector_db
 
-    def __find_record(self, data: RecordData):
-        record = self.db[data.collection_name].find_one({"_id": ObjectId(data.id)})
-        if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Record with ID {data.id} not found in collection {data.collection_name}",
-            )
+    def __find_records(self, data: RecordData):
+        ids = [ObjectId(_id) for _id in data.ids]
+        records = self.db[data.collection_name].find({"_id": {"$in": ids}})
+        return records.to_list()
 
-        return record
+    def __index_new_verification(self, records: list[dict]) -> list[Document]:
+        verifications = TypeAdapter(list[NewsVerification]).validate_python(records)
 
-    def __index_new_verification(self, data: RecordData) -> list[Document]:
-        record = self.__find_record(data)
-
-        verification = NewsVerification.model_validate(record)
-
-        metadata = {
-            "data_id": ObjectId(str(verification.id)),
+        base_metadata = {
             "collection_name": NewsVerification.__collection_name__,
             "topic": Topic.VERIFICATION_OF_NEWS.value,
         }
+        documents = []
+        for verification in verifications:
+            metadata = {"data_id": ObjectId(str(verification.id)), **base_metadata}
+            title = sanitize_text_input(verification.title)
+            body = sanitize_text_input(verification.body)
+            summary = sanitize_text_input(verification.summary)
+            news_documents = [
+                Document(page_content=title, metadata=metadata),
+                Document(page_content=body, metadata=metadata),
+                Document(page_content=summary, metadata=metadata),
+            ]
+            documents.extend(news_documents)
 
-        title = sanitize_text_input(verification.title)
-        body = sanitize_text_input(verification.body)
-        summary = sanitize_text_input(verification.summary)
-        documents = [
-            Document(page_content=title, metadata=metadata),
-            Document(page_content=body, metadata=metadata),
-            Document(page_content=summary, metadata=metadata),
-        ]
+        return self.__splitter.split_documents(documents)
+
+    def __index_election(self, records: list[dict]) -> list[Document]:
+        elections = TypeAdapter(list[Election]).validate_python(records)
+        base_metadata = {"collection_name": Election.__collection_name__}
+        documents = []
+        for election in elections:
+            name = sanitize_text_input(f"{election.name} {election.active_round} {election.status}")
+            description = sanitize_text_input(election.description)
+            result = sanitize_text_input(election.description)
+            content = f"{name}\n\n{description}\n\n{result}\n"
+            metadata = {"data_id": election.id, **base_metadata}
+            documents.append(Document(page_content=content, metadata=metadata))
+
         return documents
 
-    def __index_election(self, data: RecordData) -> list[Document]:
-        record = self.__find_record(data)
-        election = Election.model_validate(record)
-        metadata = {
-            "data_id": election.id,
-            "collection_name": Election.__collection_name__,
-        }
-        name = sanitize_text_input(f"{election.name} {election.active_round} {election.status}")
-        description = sanitize_text_input(election.description)
-        result = sanitize_text_input(election.description)
-        content = f"{name}\n\n{description}\n\n{result}\n"
-
-        document = Document(page_content=content, metadata=metadata)
-        return [document]
-
-    def __index_electoral_calendar(self, data: RecordData):
-        record = self.__find_record(data)
-        calendar = ElectoralCalendar.model_validate(record)
-        metadata = {
-            "data_id": calendar.id,
+    def __index_electoral_calendar(self, records: list[dict]):
+        for record in records:
+            del record["events"]
+        calendars = TypeAdapter(list[ElectoralCalendar]).validate_python(records)
+        base_metadata = {
             "topic": Topic.ELECTORAL_CALENDAR.value,
             "collection_name": ElectoralCalendar.__collection_name__,
         }
-        title = sanitize_text_input(calendar.title)
-        date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
-        resolution = sanitize_text_input(calendar.resolution)
-        introduction = sanitize_text_input(calendar.introduction or "")
-        content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
-        return [Document(page_content=content, metadata=metadata)]
 
-    def __index_calendar_event(self, data: RecordData):
-        record = self.__find_record(data)
-        event = CalendarEvent.model_validate(record)
-        metadata = {
-            "data_id": event.id,
-            "calendar_id": event.calendar_id,
-            "topic": Topic.ELECTORAL_CALENDAR.value,
-            "collection_name": CalendarEvent.__collection_name__,
-        }
-        activity = sanitize_text_input(event.activity)
-        return [Document(page_content=activity, metadata=metadata)]
-
-    def __index_candidacy(self, data: RecordData):
-        record = self.__find_record(data)
-        candidacy = Candidacy.model_validate(record)
-
-        metadata = {
-            "data_id": candidacy.id,
-            "topic": Topic.CANDIDACIES.value,
-            "collection_name": Candidacy.__collection_name__,
-            "election_id": candidacy.election_id,
-        }
-
-        content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
-        content = sanitize_text_input(content)
-        documents = [Document(content, metadata=metadata)]
-
-        for politician in candidacy.candidates:
-            content = f"{politician.full_name} como {politician.position}"
-            documents.append(Document(content, metadata=metadata))
-        gov_program_docs = self.__markdown_splitter.split_text(candidacy.government_plan)
-        metadata = {
-            **metadata,
-            "topic": Topic.GOVERNMENT_PROPOSALS.value,
-        }
-
-        for doc in gov_program_docs:
-            if len(self.__encoding.encode(doc.page_content)) > 1000:
-                sub_docs = self.__splitter.split_documents([doc])
-            else:
-                sub_docs = [doc]
-
-            for sub_doc in sub_docs:
-                content = "\n".join([v for v in sub_doc.metadata.values()])
-                content = f"{content}\n\n{sub_doc.page_content}"
-                documents.append(Document(page_content=content, metadata=metadata))
+        documents = []
+        for calendar in calendars:
+            title = sanitize_text_input(calendar.title)
+            date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
+            resolution = sanitize_text_input(calendar.resolution)
+            introduction = sanitize_text_input(calendar.introduction or "")
+            content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
+            metadata = {"data_id": calendar.id, **base_metadata}
+            documents.append(Document(page_content=content, metadata=metadata))
 
         return documents
 
-    def __index_qa(self, data: RecordData):
-        record = self.__find_record(data)
-        qa = QuestionsAndAnswers.model_validate(record)
-        metadata = {
-            "data_id": ObjectId(str(qa.id)),
-            "collection_name": QuestionsAndAnswers.__collection_name__,
-            "topic": Topic.QUESTIONS_AND_ANSWERS.value,
+    def __index_calendar_event(self, records: list[dict]):
+        events = TypeAdapter(list[CalendarEvent]).validate_python(records)
+
+        documents = []
+        base_metadata = {
+            "topic": Topic.ELECTORAL_CALENDAR.value,
+            "collection_name": CalendarEvent.__collection_name__,
         }
-        question = sanitize_text_input(qa.question)
-        return [Document(page_content=question, metadata=metadata)]
+        for event in events:
+            activity = sanitize_text_input(event.activity)
+            metadata = {"data_id": event.id, "calendar_id": event.calendar_id, **base_metadata}
+            documents.append(Document(page_content=activity, metadata=metadata))
+        return documents
+
+    def __index_candidacy(self, records: list[dict]):
+        candidacies = TypeAdapter(list[Candidacy]).validate_python(records)
+
+        all_documents = []
+        for candidacy in candidacies:
+            metadata = {
+                "data_id": candidacy.id,
+                "topic": Topic.CANDIDACIES.value,
+                "collection_name": Candidacy.__collection_name__,
+                "election_id": candidacy.election_id,
+            }
+
+            content = f"partido {candidacy.party.name} {candidacy.party.sigla}"
+            content = sanitize_text_input(content)
+
+            all_documents.append(Document(content, metadata=metadata))
+
+            for politician in candidacy.candidates:
+                content = f"{politician.full_name} como {politician.position}"
+                all_documents.append(Document(content, metadata=metadata))
+
+            gov_program_docs = self.__markdown_splitter.split_text(candidacy.government_plan)
+
+            metadata = {
+                **metadata,
+                "data_id": candidacy.id,
+                "topic": Topic.GOVERNMENT_PROPOSALS.value,
+            }
+
+            for doc in gov_program_docs:
+                if len(self.__encoding.encode(doc.page_content)) > 1000:
+                    sub_docs = self.__splitter.split_documents([doc])
+                else:
+                    sub_docs = [doc]
+
+                for sub_doc in sub_docs:
+                    content = "\n".join([v for v in sub_doc.metadata.values()])
+                    content = f"{content}\n\n{sub_doc.page_content}"
+                    all_documents.append(Document(page_content=content, metadata=metadata))
+
+        return all_documents
+
+    def __index_qa(self, records: list[dict]):
+        questions_and_answers = TypeAdapter(list[QuestionsAndAnswers]).validate_python(records)
+
+        documents = []
+        base_metadata = {
+            "topic": Topic.QUESTIONS_AND_ANSWERS.value,
+            "collection_name": QuestionsAndAnswers.__collection_name__,
+        }
+        for qa in questions_and_answers:
+            question = sanitize_text_input(qa.question)
+            documents.append(
+                Document(
+                    page_content=question,
+                    metadata={"data_id": qa.id, **base_metadata},
+                )
+            )
+
+        return documents
 
     async def index_record(self, data: RecordData):
-        indexers: dict[str, Callable[[RecordData], list[Document]]] = {
+        records = self.__find_records(data)
+
+        indexers: dict[str, Callable[[list[dict]], list[Document]]] = {
             NewsVerification.__collection_name__: self.__index_new_verification,
             Election.__collection_name__: self.__index_election,
             ElectoralCalendar.__collection_name__: self.__index_electoral_calendar,
@@ -178,9 +198,9 @@ class IndexingService:
         }
 
         if data.collection_name not in indexers:
-            raise HTTPException(400, f"Collection {data.collection_name} not supported")  # type: ignore
+            raise HTTPException(400, f"Collection {data.collection_name} not supported")
 
-        documents = indexers[data.collection_name](data)
-        self.db[settings.mongo.collection_name].delete_many({"data_id": ObjectId(data.id)})
+        documents = indexers[data.collection_name](records)
+        self.db[settings.mongo.collection_name].delete_many({"data_id": {"$in": data.ids}})
         ids = await self.vector_db.aadd_documents(documents)
         return ids
