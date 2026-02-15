@@ -2,7 +2,6 @@ from typing import Any, Callable
 
 import tiktoken
 from bson import ObjectId
-from fastapi import HTTPException
 from langchain_core.documents import Document
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
@@ -185,7 +184,7 @@ class IndexingService:
 
         return documents
 
-    async def index_record(self, data: RecordData):
+    async def index_record(self, data: RecordData) -> list[str]:
         records = self.__find_records(data)
 
         indexers: dict[str, Callable[[list[dict]], list[Document]]] = {
@@ -196,11 +195,20 @@ class IndexingService:
             Candidacy.__collection_name__: self.__index_candidacy,
             QuestionsAndAnswers.__collection_name__: self.__index_qa,
         }
-
         if data.collection_name not in indexers:
-            raise HTTPException(400, f"Collection {data.collection_name} not supported")
-
+            return []
         documents = indexers[data.collection_name](records)
-        self.db[settings.mongo.collection_name].delete_many({"data_id": {"$in": data.ids}})
+        await self.delete_index(data)
         ids = await self.vector_db.aadd_documents(documents)
         return ids
+
+    async def delete_index(self, data: RecordData):
+        collection = self.db[settings.mongo.collection_name]
+        ids = [ObjectId(_id) for _id in data.ids]
+
+        collection.delete_many(
+            {
+                "data_id": {"$in": ids},
+                "collection_name": data.collection_name,
+            }
+        )
