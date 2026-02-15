@@ -1,7 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.vectorstores import VectorStore
@@ -26,10 +25,8 @@ from src.agent.commands import (
 from src.agent.schemas import Topic
 from src.api.services.indexing_service import IndexingService
 from src.core.config import settings
-from src.core.security import verify_token
 from src.mongo import get_async_mongo_db
 from src.mongo.consts import FILTERS
-from src.mongo.models import User
 
 
 def get_chat_model():
@@ -139,41 +136,6 @@ def get_indexing_service(vector_db: "VectorDBDep"):
     return IndexingService(vector_db)
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-
-def get_current_user(
-    request: Request,
-    db: "MongoDBDep",
-) -> User:
-    # Extract token from Authorization header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = auth_header.split(" ")[1]
-    payload = verify_token(token)
-    if payload is None or not payload.get("sub") or payload.get("sub") is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    email = str(payload["sub"]).lower().strip()
-    user = db[User.__collection_name__].find_one({"email": email})
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return User.model_validate(user)
-
-
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
 EmbeddingModelDep = Annotated[Embeddings, Depends(get_embedding_model)]
 ClassifyTopicDep = Annotated[AsyncClassifyTopic, Depends(get_topic_selector)]
@@ -184,4 +146,3 @@ BuildTopicPromptsDep = Annotated[BuildTopicContext, Depends(get_topic_prompt_bui
 AgentDep = Annotated[AsyncAgent, Depends(get_agent)]
 SearchElectionDep = Annotated[SearchElection, Depends(get_election_searcher)]
 IndexingServiceDep = Annotated[IndexingService, Depends(get_indexing_service)]
-CurrentUserDep = Annotated[User, Depends(get_current_user)]
