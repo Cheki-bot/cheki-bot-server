@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     WebSocket,
     WebSocketDisconnect,
@@ -17,6 +18,8 @@ from telegram import Bot
 
 from src.agent.schemas import AgentResponseChunk
 from src.api.dependencies import AgentDep
+from src.api.dependencies.injectables import MongoDBDep
+from src.api.dependencies.rate_limit_dep import LimitEndpoint, LimitWebSocket
 from src.api.schemas import QueryRequest
 
 
@@ -32,7 +35,7 @@ chatbot_router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
 
 @chatbot_router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
+async def websocket_endpoint(websocket: WebSocket, agent: AgentDep, db: MongoDBDep):
     """
     Handles WebSocket connections for real-time chatbot interaction.
 
@@ -46,9 +49,14 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         WebSocketDisconnect: If the WebSocket connection is disconnected.
         Exception: For any unexpected errors.
     """
+    limit = LimitWebSocket(10, 1)
     await websocket.accept()
+
     try:
         data = await websocket.receive_json()
+
+        # limit request per ip
+        await limit(websocket, db)
 
         query = QueryRequest.model_validate(data)
 
@@ -69,6 +77,11 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1008)
 
+    except HTTPException as e:
+        res = AgentResponseChunk(content=e.detail, type="error", done=True)
+        await websocket.send_text(res.model_dump_json())
+        await websocket.close(code=1008, reason=res.content)
+
     except JSONDecodeError as e:
         res = AgentResponseChunk(
             content=f"ERROR de decodificación JSON: {e}", type="error", done=True
@@ -85,7 +98,7 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         await websocket.close(code=1011)
 
 
-@chatbot_router.post("/webhook")
+@chatbot_router.post("/webhook", dependencies=[Depends(LimitEndpoint(10, 1))])
 async def telegram_webhook(
     update: Dict[str, Any],
     agent: AgentDep,
