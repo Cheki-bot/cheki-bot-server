@@ -1,7 +1,6 @@
 from typing import Literal
 
-from openai import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 class ApiMessage(BaseModel):
