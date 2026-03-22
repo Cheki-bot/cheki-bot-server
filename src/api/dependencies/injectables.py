@@ -5,7 +5,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.vectorstores import VectorStore
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_nebius import ChatNebius, NebiusEmbeddings
+from langchain_nebius import ChatNebius, NebiusEmbeddings  # type: ignore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pymongo.database import Database as MongoDB
 
@@ -23,18 +23,20 @@ from src.agent.commands import (
     SearchElection,
 )
 from src.agent.schemas import Topic
+from src.api.services.indexing_service import IndexingService
 from src.core.config import settings
 from src.mongo import get_async_mongo_db
 from src.mongo.consts import FILTERS
 
 
 def get_chat_model():
-    params = dict(
-        model=settings.llm.model,
-        api_key=settings.llm.api_key,
-        temperature=settings.llm.temperature,
-        max_completion_tokens=settings.llm.max_tokens,
-    )
+    params = {
+        "model": settings.llm.model,
+        "api_key": settings.llm.api_key,
+        "temperature": settings.llm.temperature,
+        "max_completion_tokens": settings.llm.max_tokens,
+    }
+
     match settings.llm.provider:
         case "openai":
             return ChatOpenAI(**params)
@@ -44,16 +46,19 @@ def get_chat_model():
             raise NotImplementedError("Provider not supported")
 
 
-def get_embedding_model():
-    params = dict(
-        model=settings.llm.emb_model,
-        api_key=settings.llm.api_key,
-    )
+def get_embedding_model() -> Embeddings:
+    params = {
+        "model": settings.llm.emb_model,
+        "api_key": settings.llm.api_key,
+    }
     match settings.llm.provider:
         case "openai":
-            return OpenAIEmbeddings(**params)
+            return OpenAIEmbeddings(
+                model=settings.llm.emb_model,
+                api_key=settings.llm.api_key,
+            )
         case "nebius":
-            raise NebiusEmbeddings(**params)
+            return NebiusEmbeddings(**params)
         case _:
             raise NotImplementedError("Provider not supported")
 
@@ -127,6 +132,10 @@ def get_election_searcher(
     return SearchElection(chat_model, vector_db)
 
 
+def get_indexing_service(vector_db: "VectorDBDep"):
+    return IndexingService(vector_db)
+
+
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
 EmbeddingModelDep = Annotated[Embeddings, Depends(get_embedding_model)]
 ClassifyTopicDep = Annotated[AsyncClassifyTopic, Depends(get_topic_selector)]
@@ -136,3 +145,4 @@ RAGRetrieveDep = Annotated[AsyncRAGRetrieve, Depends(get_rag_engine)]
 BuildTopicPromptsDep = Annotated[BuildTopicContext, Depends(get_topic_prompt_builder)]
 AgentDep = Annotated[AsyncAgent, Depends(get_agent)]
 SearchElectionDep = Annotated[SearchElection, Depends(get_election_searcher)]
+IndexingServiceDep = Annotated[IndexingService, Depends(get_indexing_service)]

@@ -69,10 +69,10 @@ def load_elections():
     collection = db["elections"]
 
     elections = TypeAdapter(list[Election]).validate_python(collection.find())
-    base_metadata = {"collection_name": "elections"}
+    base_metadata = {"collection_name": Election.__collection_name__}
     documents = []
     for election in elections:
-        name = sanitize_text_input(election.name)
+        name = sanitize_text_input(f"{election.name} {election.active_round} {election.status}")
         description = sanitize_text_input(election.description)
         result = sanitize_text_input(election.description)
         content = f"{name}\n\n{description}\n\n{result}\n"
@@ -97,7 +97,7 @@ def load_calendar_metadata():
         title = sanitize_text_input(calendar.title)
         date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
         resolution = sanitize_text_input(calendar.resolution)
-        introduction = sanitize_text_input(calendar.introduction)
+        introduction = sanitize_text_input(calendar.introduction or "")
         content = f"{title} - {date} - {resolution}\n\n{introduction}\n"
         metadata = {"data_id": calendar.id, **base_metadata}
         documents.append(Document(page_content=content, metadata=metadata))
@@ -140,17 +140,6 @@ def load_candidates():
 
     all_documents = []
     for election in elections:
-        content = sanitize_text_input(
-            (f"candidatos en las {election.name} {election.active_round} {election.status}")
-        )
-        metadata = {
-            "data_id": election.id,
-            "topic": Topic.CANDIDACIES.value,
-            "collection_name": Election.__collection_name__,
-        }
-        document = Document(content, metadata=metadata)
-        all_documents.append(document)
-
         candidates = TypeAdapter(list[Candidacy]).validate_python(
             can_coll.find({"election_id": election.id})
         )

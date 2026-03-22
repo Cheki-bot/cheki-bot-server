@@ -1,9 +1,11 @@
 from typing import AsyncGenerator, Optional
 
-from pymongo import MongoClient
+from pymongo import AsyncMongoClient, MongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.database import Database
 
 from src import ENV
+from src.core.config import settings
 
 client: Optional[MongoClient] = None
 db: Optional[Database] = None
@@ -39,3 +41,9 @@ def get_mongo_db() -> Database:
             # Si hay un error, reinicializar la conexión
             client, db = init_mongo()
             return db
+
+
+async def get_asyncmongo_db() -> AsyncDatabase:
+    client = AsyncMongoClient(settings.mongo.uri)
+    db = client.get_database(settings.mongo.db_name)
+    return db

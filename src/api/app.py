@@ -1,7 +1,9 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import ENV
+from src.api.lifespan import lifespan
 
 from .routes import api
 
@@ -13,7 +15,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: A configured FastAPI application instance.
     """
-    app = FastAPI()
+    app = FastAPI(lifespan=lifespan)
     app.title = "Checki API"  # type: ignore
     app.version = "0.1.0"
     app.description = "API for Checki bot"
