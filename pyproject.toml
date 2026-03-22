@@ -18,6 +18,7 @@ dependencies = [
     "langchain-mongodb>=0.7.0",
     "langchain-nebius>=0.1.3",
     "langchain-openai>=0.3.28",
+    "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
     "pymongo>=4.15.1",
     "pytest-asyncio>=1.1.0",
@@ -28,13 +29,17 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "bs4>=0.0.2",
     "ipykernel>=6.30.1",
     "ipywidgets>=8.1.7",
     "mypy>=1.17.1",
+    "pandas>=2.3.3",
+    "pandas-stubs>=2.3.2.250926",
     "pytest>=8.4.1",
     "ruff>=0.12.5",
+    "types-pytz>=2025.2.0.20250809",
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 100
 include = ["./**/*.py", "./**/*.ipynb"]

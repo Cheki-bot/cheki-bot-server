@@ -1,5 +1,10 @@
 from typing import Annotated
 
-from pydantic import BeforeValidator
+from bson import ObjectId
+from pydantic import BeforeValidator, PlainSerializer
 
-PyObjectId = Annotated[str, BeforeValidator(str)]
+PyObjectId = Annotated[
+    ObjectId,
+    BeforeValidator(lambda v: ObjectId(str(v))),
+    PlainSerializer(lambda v: str(v), return_type=str, when_used="json"),
+]

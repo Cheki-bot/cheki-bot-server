@@ -1,6 +1,6 @@
 import os
 
-from .core.settings import Settings
+from src.core.settings import Settings
 
 _env_file = ".env"
 
@@ -13,4 +13,4 @@ match os.getenv("ENV"):
         _env_file = ".env"
 
 
-ENV = Settings(_env_file=_env_file)
+settings = Settings(_env_file=_env_file)

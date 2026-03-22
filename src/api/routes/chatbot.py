@@ -53,7 +53,9 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         query = QueryRequest.model_validate(data)
 
         messages = [HumanMessage(content=query.content)] + [
-            HumanMessage(content=msg.content) if msg.role == "user" else AIMessage(content=msg.content)
+            HumanMessage(content=msg.content)
+            if msg.role == "user"
+            else AIMessage(content=msg.content)
             for msg in query.history
         ]
 
@@ -68,7 +70,9 @@ async def websocket_endpoint(websocket: WebSocket, agent: AgentDep):
         await websocket.close(code=1008)
 
     except JSONDecodeError as e:
-        res = AgentResponseChunk(content=f"ERROR de decodificación JSON: {e}", type="error", done=True)
+        res = AgentResponseChunk(
+            content=f"ERROR de decodificación JSON: {e}", type="error", done=True
+        )
         await websocket.send_text(res.model_dump_json())
         await websocket.close(code=1003)
 

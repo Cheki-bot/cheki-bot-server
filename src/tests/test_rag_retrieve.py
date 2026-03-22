@@ -21,7 +21,7 @@ def mock_topic_selection():
         topic=Topic.VERIFICATION_OF_NEWS,
         description="Test topic",
         optimized_query="test query",
-        additional_topics=[Topic.CANDIDATES, Topic.ELECTORAL_INFORMATION],
+        additional_topics=[Topic.CANDIDACIES, Topic.ELECTORAL_INFORMATION],
     )
 
 
