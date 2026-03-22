@@ -93,7 +93,15 @@ def load_calendar_metadata():
         "collection_name": ElectoralCalendar.__collection_name__,
     }
 
-    for calendar in TypeAdapter(list[ElectoralCalendar]).validate_python(collection.find()):
+    calendars: list[ElectoralCalendar] = []
+
+    for raw_calendar in collection.find():
+        try:
+            calendars.append(ElectoralCalendar.model_validate(raw_calendar))
+        except Exception as e:
+            print(e)
+
+    for calendar in calendars:
         title = sanitize_text_input(calendar.title)
         date = calendar.date.strftime("%a, %m/%d/%Y - %H:%M")
         resolution = sanitize_text_input(calendar.resolution)
@@ -255,13 +263,7 @@ def create_vectordb():
             break
 
     if search_index:
-        existing_filters = {
-            f["path"] for f in search_index["latestDefinition"]["fields"] if f["type"] == "filter"
-        }
-
-        if not existing_filters == set(FILTERS):
-            vectordb.collection.drop_search_index(settings.mongo.index_name)
-            print("Index dropped due to filter mismatch")
+        vectordb.collection.drop_search_index(settings.mongo.index_name)
 
     vectordb.create_vector_search_index(settings.mongo.dimensions, FILTERS)
 

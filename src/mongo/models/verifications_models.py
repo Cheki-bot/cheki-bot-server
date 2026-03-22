@@ -2,14 +2,14 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .mongo_model import MongoModel
 
 
 class NewsTag(BaseModel):
     name: str
-    url: str
+    url: str | None = Field(default=None)
 
 
 class NewsVerification(MongoModel):
@@ -21,4 +21,4 @@ class NewsVerification(MongoModel):
     body: str
     url: str
     publication_date: datetime
-    tags: List[NewsTag]
+    tags: List[NewsTag] = Field(default_factory=list)
